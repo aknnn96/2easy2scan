@@ -6,7 +6,7 @@
       const appMode = navigator.standalone === true ||
         ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].some(mode => matchMedia('(display-mode: ' + mode + ')').matches) ||
         new URL(location.href).searchParams.get('launch') === 'app';
-      if (!navigator.onLine || appMode) document.documentElement.classList.add('skip-welcome', 'offline-app-mode');
+      if (window.__SMARTSCAN_OFFLINE__ || !navigator.onLine || appMode) document.documentElement.classList.add('skip-welcome', 'offline-app-mode');
     })();
   </script>
   <meta charset="UTF-8" />
@@ -144,13 +144,13 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       touch-action: pan-y !important; cursor: pointer;
     }
     .page-card .thumb-wrapper {
-      position: relative; width: 100%; height: 240px; background: #ffffff;
+      position: relative; width: 100%; aspect-ratio: var(--page-ratio, 210 / 297); background: #ffffff;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
       touch-action: pan-y !important;
     }
-    .page-card img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+    .page-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
     .page-card .format-tag {
-      position: absolute; top: 8px; left: 8px; background: rgba(15,23,42,0.85);
+      position: absolute; z-index: 1; top: 8px; left: 8px; background: rgba(15,23,42,0.85);
       backdrop-filter: blur(4px); font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.45rem;
       border-radius: 6px; border: 1px solid var(--surface-border);
     }
@@ -402,7 +402,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.2.0</span>
+  <span class="version-stamp">Version 1.3.0</span>
  </div>
 </section>
 
@@ -413,7 +413,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Version 1.2.0</span>
+        <span class="version-stamp">Version 1.3.0</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -630,7 +630,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600;">Choose paper size:</span>
         <div style="display: flex; gap: 0.3rem;">
           <button class="btn btn-secondary" id="btnAutoDetectCorners" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">
-            <i data-lucide="refresh-cw" style="width:12px;"></i> Reset
+            <i data-lucide="scan" style="width:12px;"></i> Detect edges
           </button>
           <button class="btn btn-secondary" id="btnRotateSource" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">
             <i data-lucide="rotate-cw" style="width:12px;"></i> Rotate 90°
@@ -664,7 +664,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         </div>
         <div class="filter-card" data-filter="bw">
           <div>📄 Laser scan</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Sauvola B/W</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Soft monochrome</span>
         </div>
         <div class="filter-card" data-filter="antiglare">
           <div>⚡ Highlights</div>
@@ -942,8 +942,8 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     // ====================================================
     const FILTER_PRESETS = {
       original:  { brightness: 0,  contrast: 0,  bleach: 0,  ink: 0,  glare: 0 },
-      magic:     { brightness: 0,  contrast: 8,  bleach: 65, ink: 15, glare: 0 },
-      bw:        { brightness: 0,  contrast: 5,  bleach: 55, ink: 55, glare: 0 },
+      magic:     { brightness: 0,  contrast: 2,  bleach: 25, ink: 0, glare: 0 },
+      bw:        { brightness: 0,  contrast: 0,  bleach: 30, ink: 25, glare: 0 },
       antiglare: { brightness: 0,  contrast: 5,  bleach: 30, ink: 10, glare: 60 },
       ink:       { brightness: 0,  contrast: 8,  bleach: 40, ink: 35, glare: 0 },
       gray:      { brightness: 0,  contrast: 8,  bleach: 60, ink: 10, glare: 0 }
@@ -1106,7 +1106,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       enterWebApp();
     }
     function updateLaunchMode() {
-      if (!navigator.onLine || isAppLaunch()) enterOfflineApp();
+      if (window.__SMARTSCAN_OFFLINE__ || !navigator.onLine || isAppLaunch()) enterOfflineApp();
     }
     updateLaunchMode();
     window.addEventListener('offline', updateLaunchMode);
@@ -1117,7 +1117,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         const reg = await navigator.serviceWorker.getRegistration(appScope);
         if (!reg || reg.scope !== appScope || !reg.active ||
             reg.active.scriptURL !== new URL('sw.js', appScope).href) return;
-        const cache = await caches.open(offlineCachePrefix + 'v2');
+        const cache = await caches.open(offlineCachePrefix + 'v3');
         if (await cache.match(new URL('index.html', appScope).href)) enterOfflineApp();
       } catch {}
     }
@@ -1195,7 +1195,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         // An already prepared offline copy must work without fetching sw.js.
         if (!navigator.onLine) {
           const reg = await navigator.serviceWorker.getRegistration(appScope);
-          const cache = await caches.open(offlineCachePrefix + 'v2');
+          const cache = await caches.open(offlineCachePrefix + 'v3');
           if (reg && reg.scope === appScope && reg.active &&
               reg.active.scriptURL === workerUrl &&
               await cache.match(new URL('index.html', appScope).href)) {
@@ -1238,7 +1238,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           });
         }
         enableInstallManifest();
-        const cache = await caches.open(offlineCachePrefix + 'v2');
+        const cache = await caches.open(offlineCachePrefix + 'v3');
         if (!await cache.match(new URL('index.html', appScope).href)) throw new Error('Offline cache missing');
         setOfflineStatus('Offline ready – this address can now open without internet.');
       } catch (error) {
@@ -1491,6 +1491,13 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     let cameraDevices = [];
     let currentCameraDeviceId = '';
     let currentFacingMode = 'environment';
+    function mainCameraFor(devices, facing) {
+      const side = facing === 'environment' ? /back|rear|environment|rück|hinten/i : /front|user|facetime|vorder|vorne/i;
+      const auxiliary = /ultra[ -]?wide|telephoto|tele\b|macro|depth|infrared|\bir\b|0[.,]5\s*x|dual|triple/i;
+      const candidates = devices.filter(d => side.test(d.label || '') && !auxiliary.test(d.label || ''));
+      const explicit = candidates.filter(d => /main|primary|standard|haupt|wide.angle|wide camera|1[.,]0\s*x|\b1x\b/i.test(d.label));
+      return explicit.length === 1 ? explicit[0] : candidates.length === 1 ? candidates[0] : null;
+    }
     async function openCameraStream(facingMode = 'environment') {
       closeCameraStream();
       const requestId = ++cameraRequestId;
@@ -1516,22 +1523,31 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           stream.getTracks().forEach(t => t.stop());
           return;
         }
+        try {
+          if (navigator.mediaDevices.enumerateDevices) {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            cameraDevices = devices.filter(device => device.kind === 'videoinput' && device.deviceId);
+          }
+        } catch {}
+        if (requestId !== cameraRequestId) { stream.getTracks().forEach(t => t.stop()); return; }
+        const selected = mainCameraFor(cameraDevices, facingMode);
+        let settings = stream.getVideoTracks()[0].getSettings?.() || {};
+        if (selected && selected.deviceId !== settings.deviceId) {
+          stream.getTracks().forEach(t => t.stop());
+          stream = await navigator.mediaDevices.getUserMedia({audio:false,video:{deviceId:{exact:selected.deviceId}}});
+          if (requestId !== cameraRequestId) { stream.getTracks().forEach(t => t.stop()); return; }
+          settings = stream.getVideoTracks()[0].getSettings?.() || {};
+        }
+        if (settings.facingMode && settings.facingMode !== facingMode) {
+          throw new Error('Requested camera side unavailable');
+        }
         mediaStream = stream;
         cameraVideo.srcObject = stream;
         await cameraVideo.play();
         if (requestId !== cameraRequestId) return;
         track = stream.getVideoTracks()[0];
-        const settings = track.getSettings ? track.getSettings() : {};
         currentCameraDeviceId = settings.deviceId || '';
-        currentFacingMode = settings.facingMode || facingMode;
-        try {
-          if (navigator.mediaDevices.enumerateDevices) {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            if (requestId !== cameraRequestId) return;
-            cameraDevices = devices.filter(device => device.kind === 'videoinput' && device.deviceId);
-          }
-        } catch {}
-        if (requestId !== cameraRequestId) return;
+        currentFacingMode = facingMode;
         try { imageCapture = window.ImageCapture ? new ImageCapture(track) : null; }
         catch { imageCapture = null; }
         let caps = {};
@@ -1703,6 +1719,95 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     // ----------------------------------------------------
     // 3. SCAN-EDITOR: ZUSCHNITT, 90° DREHUNG & SMARTE LUPE
     // ----------------------------------------------------
+    // Find the outside of a large light sheet, not individual text boxes.
+    function detectPaperPixels(rgba, w, h) {
+      const n=w*h, gray=new Uint8Array(n), hist=new Uint32Array(256);
+      for(let i=0;i<n;i++) { const k=i*4; gray[i]=Math.round(.299*rgba[k]+.587*rgba[k+1]+.114*rgba[k+2]);hist[gray[i]]++; }
+      let total=0;for(let i=0;i<256;i++)total+=hist[i]*i;
+      let count=0,sum=0,bestVariance=0,otsu=128;
+      for(let i=0;i<255;i++) { count+=hist[i];sum+=hist[i]*i;if(!count||count===n)continue;
+        const variance=count*(n-count)*Math.pow(sum/count-(total-sum)/(n-count),2);
+        if(variance>bestVariance){bestVariance=variance;otsu=i;}
+      }
+      const cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
+      const area=pts=>Math.abs(pts.reduce((v,p,i)=>{const q=pts[(i+1)%pts.length];return v+p.x*q.y-q.x*p.y;},0))/2;
+      function hull(points) {
+        points.sort((a,b)=>a.x-b.x||a.y-b.y);
+        const lower=[],upper=[];
+        for(const p of points){while(lower.length>1&&cross(lower.at(-2),lower.at(-1),p)<=0)lower.pop();lower.push(p);}
+        for(let i=points.length-1;i>=0;i--){const p=points[i];while(upper.length>1&&cross(upper.at(-2),upper.at(-1),p)<=0)upper.pop();upper.push(p);}
+        lower.pop();upper.pop();return lower.concat(upper);
+      }
+      const at=(x,y)=>gray[Math.max(0,Math.min(h-1,Math.round(y)))*w+Math.max(0,Math.min(w-1,Math.round(x)))];
+      let best=null,score=0;
+      const queue=new Int32Array(n);
+      for(const threshold of [...new Set([otsu+5,otsu+25,110,145,180,210].map(v=>Math.max(70,Math.min(235,v))))]) {
+        const seen=new Uint8Array(n);
+        for(let seed=0;seed<n;seed++) {
+          if(seen[seed]||gray[seed]<threshold)continue;
+          let end=1,head=0,touches=false;queue[0]=seed;seen[seed]=1;
+          const left=new Int32Array(h).fill(w),right=new Int32Array(h).fill(-1);
+          while(head<end) {
+            const i=queue[head++],x=i%w,y=(i/w)|0;
+            if(x<2||y<2||x>=w-2||y>=h-2)touches=true;
+            left[y]=Math.min(left[y],x);right[y]=Math.max(right[y],x);
+            for(const next of [x?i-1:-1,x<w-1?i+1:-1,y?i-w:-1,y<h-1?i+w:-1]) {
+              if(next>=0&&!seen[next]&&gray[next]>=threshold){seen[next]=1;queue[end++]=next;}
+            }
+          }
+          if(touches||end<n*.12||end>n*.94)continue;
+          const boundary=[];
+          for(let y=0;y<h;y++)if(right[y]>=0){boundary.push({x:left[y],y},{x:right[y],y});}
+          const poly=hull(boundary),hullArea=area(poly);
+          if(poly.length<4||end/hullArea<.65)continue;
+          while(poly.length>4) {
+            let smallest=Infinity,index=0;
+            for(let i=0;i<poly.length;i++) {const a=Math.abs(cross(poly[(i+poly.length-1)%poly.length],poly[i],poly[(i+1)%poly.length]));if(a<smallest){smallest=a;index=i;}}
+            poly.splice(index,1);
+          }
+          const qa=area(poly);if(qa/hullArea<.94||qa<n*.15)continue;
+          const lengths=poly.map((p,i)=>Math.hypot(p.x-poly[(i+1)%4].x,p.y-poly[(i+1)%4].y));
+          if(Math.min(...lengths)<Math.min(w,h)*.18||Math.max(...lengths)/Math.min(...lengths)>3.5)continue;
+          let valid=true;
+          for(let i=0;i<4;i++) {
+            const a=poly[(i+3)%4],b=poly[i],c=poly[(i+1)%4];
+            const cosine=((a.x-b.x)*(c.x-b.x)+(a.y-b.y)*(c.y-b.y))/(lengths[(i+3)%4]*lengths[i]);
+            if(Math.abs(cosine)>.85)valid=false;
+          }
+          if(!valid)continue;
+          // All four sides need evidence of a paper-to-background transition.
+          const cx=poly.reduce((v,p)=>v+p.x,0)/4,cy=poly.reduce((v,p)=>v+p.y,0)/4;
+          const support=[];
+          for(let j=0;j<4;j++) {
+            const a=poly[j],b=poly[(j+1)%4];let edge=0,positive=0;
+            for(let k=2;k<19;k++) {
+              const t=k/20,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t;
+              let nx=-(b.y-a.y)/lengths[j],ny=(b.x-a.x)/lengths[j];
+              if((cx-x)*nx+(cy-y)*ny<0){nx=-nx;ny=-ny;}
+              const delta=at(x+nx*4,y+ny*4)-at(x-nx*4,y-ny*4);
+              edge+=Math.max(0,delta);if(delta>7)positive++;
+            }
+            support.push(edge/17);if(positive<10)valid=false;
+          }
+          if(!valid||Math.min(...support)<9)continue;
+          const candidateScore=qa/n * (0.7+Math.min(1,Math.min(...support)/60)*.3);
+          if(candidateScore>score){score=candidateScore;best=poly.map(p=>({...p}));}
+        }
+      }
+      if(!best)return null;
+      // Rotate clockwise order so the first corner is the upper-left.
+      let start=0;for(let i=1;i<4;i++)if(best[i].x+best[i].y<best[start].x+best[start].y)start=i;
+      best=best.map((_,i)=>best[(i+start)%4]);
+      return Object.fromEntries(['tl','tr','br','bl'].map((key,i)=>[key,{x:best[i].x/w,y:best[i].y/h}]));
+    }
+    function detectPaperCorners(img) {
+      const scale=Math.min(1,560/Math.max(img.width,img.height));
+      const canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      return detectPaperPixels(ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
+    }
+
     function openScanCropEditor(img, initialProjectedCorners) {
       currentRawImage = img;
       activeCropFormat = activeVfFormat;
@@ -1714,8 +1819,9 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       scanEditorModal.style.display = 'flex';
       goToStep('crop');
 
-      if (initialProjectedCorners) {
-        corners = initialProjectedCorners;
+      const detected = detectPaperCorners(img);
+      if (detected || initialProjectedCorners) {
+        corners = detected || initialProjectedCorners;
       } else {
         applyFormatRatioToCorners(activeCropFormat);
       }
@@ -1845,10 +1951,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     });
 
     btnAutoDetectCorners.addEventListener('click', () => {
-      applyFormatRatioToCorners(activeCropFormat);
+      const detected = detectPaperCorners(currentRawImage);
+      if (detected) corners = detected;
       drawCropPreview();
       updateHandlePositions();
-      showToast('Corners reset');
+      showToast(detected ? 'Paper edges detected. Check the four corners.' : 'No clear paper boundary found. Adjust the four corners manually.');
     });
 
     function drawCropPreview() {
@@ -2096,12 +2203,17 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       const aBR = calcAngle(pTR, pBR, pBL);
       const aBL = calcAngle(pBR, pBL, pTL);
 
-      const isRoughlyRectangular = [aTL, aTR, aBR, aBL].every(a => a >= 70 && a <= 110);
+      const quad = [pTL,pTR,pBR,pBL];
+      const crosses = quad.map((p,i) => {
+        const q=quad[(i+1)%4], r=quad[(i+2)%4];
+        return (q.x-p.x)*(r.y-q.y)-(q.y-p.y)*(r.x-q.x);
+      });
+      const isValidQuadrilateral = crosses.every(c=>c>1) && [aTL,aTR,aBR,aBL].every(a=>a>15 && a<165);
 
-      if (isRoughlyRectangular) {
+      if (isValidQuadrilateral) {
         const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-        const outWidth = Math.round(Math.max(dist(pTL, pTR), dist(pBL, pBR)));
-        const outHeight = Math.round(Math.max(dist(pTL, pBL), dist(pTR, pBR)));
+        const outWidth = Math.max(2, Math.round(Math.max(dist(pTL, pTR), dist(pBL, pBR))));
+        const outHeight = Math.max(2, Math.round(Math.max(dist(pTL, pBL), dist(pTR, pBR))));
 
         croppedImageCanvas.width = outWidth;
         croppedImageCanvas.height = outHeight;
@@ -2124,16 +2236,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         for (let y = 0; y < outHeight; y++) {
           for (let x = 0; x < outWidth; x++) {
             const denom = H[6] * x + H[7] * y + H[8];
-            const srcX = Math.floor((H[0] * x + H[1] * y + H[2]) / denom);
-            const srcY = Math.floor((H[3] * x + H[4] * y + H[5]) / denom);
-
-            if (srcX >= 0 && srcX < sW && srcY >= 0 && srcY < sH) {
-              const sIdx = (srcY * sW + srcX) * 4;
-              dPixels[idx] = sPixels[sIdx];
-              dPixels[idx + 1] = sPixels[sIdx + 1];
-              dPixels[idx + 2] = sPixels[sIdx + 2];
-              dPixels[idx + 3] = 255;
+            const srcX = Math.max(0,Math.min(sW-1,(H[0]*x+H[1]*y+H[2])/denom));
+            const srcY = Math.max(0,Math.min(sH-1,(H[3]*x+H[4]*y+H[5])/denom));
+            const x0=Math.floor(srcX),y0=Math.floor(srcY),fx=srcX-x0,fy=srcY-y0;
+            const x1=Math.min(sW-1,x0+1),y1=Math.min(sH-1,y0+1);
+            for(let c=0;c<3;c++) {
+              const top=sPixels[(y0*sW+x0)*4+c]*(1-fx)+sPixels[(y0*sW+x1)*4+c]*fx;
+              const bottom=sPixels[(y1*sW+x0)*4+c]*(1-fx)+sPixels[(y1*sW+x1)*4+c]*fx;
+              dPixels[idx+c]=top*(1-fy)+bottom*fy;
             }
+            dPixels[idx+3]=255;
             idx += 4;
           }
         }
@@ -2301,6 +2413,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       const dst = destination || new Uint8ClampedArray(src.length);
       if (!w || !h) return dst;
       const clamp = x => Math.max(0,Math.min(255,x));
+      // Invalid saved slider values must never propagate NaN into black pixels.
+      params = Object.fromEntries(['brightness','contrast','bleach','ink','glare'].map(key => {
+        const value = Number(params?.[key]);
+        return [key, Number.isFinite(value) ? Math.max(key==='brightness'||key==='contrast' ? -100 : 0, Math.min(100,value)) : 0];
+      }));
       const bright = params.brightness * 1.5;
       const cFactor=(259*(params.contrast+255))/(255*(259-params.contrast));
       if (preset === 'original') {
@@ -2318,7 +2435,6 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         x0[x]=Math.floor(gx); x1[x]=Math.min(paper.cols-1,x0[x]+1); wx[x]=gx-x0[x];
       }
       const gray = preset==='bw' ? new Uint8Array(w*h) : null;
-      const denseInk = preset==='bw' ? new Uint8Array(w*h) : null;
       const bleach = params.bleach/100, ink = params.ink/100, glare=params.glare/100;
       for(let y=0;y<h;y++) {
         const gy=Math.max(0,Math.min(paper.rows-1,(y+0.5)*paper.rows/h-0.5));
@@ -2328,17 +2444,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           let r=src[i],g=src[i+1],b=src[i+2];
           const top=paper.values[y0*paper.cols+x0[x]]*(1-wx[x])+paper.values[y0*paper.cols+x1[x]]*wx[x];
           const bottom=paper.values[y1*paper.cols+x0[x]]*(1-wx[x])+paper.values[y1*paper.cols+x1[x]]*wx[x];
-          const background=top*(1-wy)+bottom*wy;
+          const background=Math.max(32, Math.min(255, top*(1-wy)+bottom*wy || 255));
           const luma=0.299*r+0.587*g+0.114*b;
           const maxChannel=Math.max(r,g,b), chroma=maxChannel-Math.min(r,g,b);
           // Zero whitening is identity; gain is bounded and preserves RGB ratios.
-          const gain=Math.min(2.2,1+bleach*(255/background-1),255/Math.max(1,maxChannel));
+          const gain=Math.min(preset==='magic'?1.35:2.2,1+bleach*(255/background-1),255/Math.max(1,maxChannel));
           r*=gain; g*=gain; b*=gain;
           let normalized=0.299*r+0.587*g+0.114*b;
           if (preset==='bw') {
-            // Highlight reduction is unnecessary for binary output.
+            // Highlight reduction is unnecessary for monochrome output.
             gray[y*w+x]=clamp(cFactor*(normalized+bright-128)+128);
-            denseInk[y*w+x] = luma/background < 0.38;
             continue;
           }
           // Smooth transitions preserve pencil strokes and prevent hard white cutoffs.
@@ -2360,34 +2475,12 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         }
       }
       if (preset!=='bw') return dst;
-      // Sauvola with rolling column sums: O(width) extra statistics memory.
-      const half=Math.max(1,Math.min(80,Math.round(Math.min(w,h)/40)));
-      const colSum=new Float64Array(w), colSq=new Float64Array(w);
-      function addRow(y,sign) {
-        for(let x=0;x<w;x++) { const v=gray[y*w+x];colSum[x]+=sign*v;colSq[x]+=sign*v*v; }
-      }
-      for(let y=0;y<=Math.min(h-1,half);y++) addRow(y,1);
-      // Increasing ink lowers k, raising the threshold and retaining more faint ink.
-      const k=0.34-ink*0.28;
-      for(let y=0;y<h;y++) {
-        if(y>0) {
-          if(y+half<h) addRow(y+half,1);
-          if(y-half-1>=0) addRow(y-half-1,-1);
-        }
-        const rows=Math.min(h-1,y+half)-Math.max(0,y-half)+1;
-        let sum=0,sq=0;
-        for(let x=0;x<=Math.min(w-1,half);x++){sum+=colSum[x];sq+=colSq[x];}
-        for(let x=0;x<w;x++) {
-          if(x>0) {
-            if(x+half<w){sum+=colSum[x+half];sq+=colSq[x+half];}
-            if(x-half-1>=0){sum-=colSum[x-half-1];sq-=colSq[x-half-1];}
-          }
-          const count=rows*(Math.min(w-1,x+half)-Math.max(0,x-half)+1);
-          const mean=sum/count, std=Math.sqrt(Math.max(0,sq/count-mean*mean));
-          const threshold=mean*(1+k*(std/128-1));
-          const pixel=gray[y*w+x],v=denseInk[y*w+x]||pixel<=2||pixel<threshold?0:255,i=(y*w+x)*4;
-          dst[i]=dst[i+1]=dst[i+2]=v;dst[i+3]=src[i+3];
-        }
+      // Continuous monochrome tone curve: no binary threshold or local halo.
+      // Dark filled areas and faint pencil keep their intermediate shades.
+      for(let p=0;p<w*h;p++) {
+        const pixel=gray[p],tone=pixel/255;
+        const v=clamp(pixel+(255-pixel)*0.45*tone*tone-ink*25*(1-tone));
+        const i=p*4;dst[i]=dst[i+1]=dst[i+2]=v;dst[i+3]=src[i+3];
       }
       return dst;
     }
@@ -2909,11 +3002,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       btnOpenExportModal.disabled = false;
 
       pagesData.forEach((p, idx) => {
-        const fmt = FORMAT_PRESETS[p.formatKey || 'a4'];
+        const fmt = FORMAT_PRESETS[p.formatKey || 'a4'] || FORMAT_PRESETS.a4;
         const card = document.createElement('div');
         card.className = 'page-card';
         card.innerHTML = `
-          <div class="thumb-wrapper" onclick="openLayoutEditor(${idx})" title="Tap to edit">
+          <div class="thumb-wrapper" style="--page-ratio: ${fmt.wPt} / ${fmt.hPt}" onclick="openLayoutEditor(${idx})" title="Tap to edit">
             <span class="format-tag">${fmt.label}</span>
             <img src="${p.previewUrl}" alt="Page ${idx + 1}" />
             <div class="edit-hint">
@@ -3032,7 +3125,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         else if (exportPreset === 'high') { maxDim = 2400; quality = 0.92; }
 
         for (const p of pagesData) {
-          const fmt = FORMAT_PRESETS[p.formatKey || 'a4'];
+          const fmt = FORMAT_PRESETS[p.formatKey || 'a4'] || FORMAT_PRESETS.a4;
           const pW = fmt.wPt;
           const pH = fmt.hPt;
 

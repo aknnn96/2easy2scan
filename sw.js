@@ -2,7 +2,7 @@
 const ROOT = new URL('./', self.location.href);
 const APP = new URL('index.html', ROOT).href;
 const PREFIX = 'smartscan-offline-' + encodeURIComponent(ROOT.pathname) + '-';
-const CACHE = PREFIX + 'v2';
+const CACHE = PREFIX + 'v3';
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const response = await fetch(APP, {cache: 'reload'});
@@ -29,18 +29,23 @@ self.addEventListener('fetch', event => {
       event.request.mode !== 'navigate') return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    // Return the saved app immediately, including when connectivity hangs.
-    const cached = await cache.match(APP);
-    const refresh = fetch(APP, {cache: 'no-cache'}).then(async response => {
-      if (response.ok && response.headers.get('content-type')?.includes('text/html')) {
-        await cache.put(APP, response.clone());
-      }
+    // Prefer the current release online; use the saved copy on failure or timeout.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    try {
+      const response = await fetch(APP, {cache:'no-cache', signal:controller.signal});
+      if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) throw new Error('App unavailable');
+      await cache.put(APP, response.clone());
       return response;
-    });
-    event.waitUntil(refresh.then(() => {}, () => {}));
-    if (cached) return cached;
-    try { return await refresh; }
-    catch { return new Response('Offline copy missing. Open this page online once.', {status: 503, headers: {'Content-Type':'text/plain; charset=utf-8'}}); }
+    } catch {
+      const cached = await cache.match(APP);
+      if (cached) {
+        const html = (await cached.text()).replace(/<head(\s[^>]*)?>/i, match => match +
+          '<script>window.__SMARTSCAN_OFFLINE__=true;document.documentElement.classList.add("offline-app-mode","skip-welcome");</script>');
+        return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8'}});
+      }
+      return new Response('Offline copy missing. Open this page online once.', {status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});
+    } finally { clearTimeout(timeout); }
   })());
 });
 
