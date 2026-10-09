@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    (() => {
+      const appMode = navigator.standalone === true ||
+        ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].some(mode => matchMedia('(display-mode: ' + mode + ')').matches) ||
+        new URL(location.href).searchParams.get('launch') === 'app';
+      if (!navigator.onLine || appMode) document.documentElement.classList.add('skip-welcome');
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>SmartScan Pro</title>
@@ -372,6 +380,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     .save-choice-card:hover { border-color: var(--primary); background: #131c31; }
     .save-choice-card i { color: var(--primary); flex-shrink: 0; }
     #welcomeScreen { position:fixed; inset:0; z-index:280; display:flex; align-items:center; justify-content:center; overflow:auto; padding:calc(1.5rem + env(safe-area-inset-top,0px)) 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px)); background:var(--bg); }
+    html.skip-welcome #welcomeScreen { display:none; }
     .welcome-card { width:100%; max-width:360px; display:flex; flex-direction:column; gap:1rem; text-align:center; }
     .welcome-card h1 { font-size:1.8rem; }
     .welcome-card p { color:var(--text-sub); line-height:1.5; margin-bottom:0.5rem; }
@@ -392,7 +401,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.1.0</span>
+  <span class="version-stamp">Version 1.1.1</span>
  </div>
 </section>
 
@@ -403,7 +412,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Version 1.1.0</span>
+        <span class="version-stamp">Version 1.1.1</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -565,7 +574,9 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <input type="file" id="fallbackFileInput" accept="image/*" style="display:none;" />
         </label>
         <button class="shutter-btn" id="btnShutter"></button>
-        <div style="width: 36px;"></div>
+        <button class="btn btn-secondary btn-icon" id="btnSwitchCamera" disabled title="Switch camera" aria-label="Switch camera">
+          <i data-lucide="switch-camera"></i>
+        </button>
       </div>
     </div>
   </div>
@@ -1081,6 +1092,29 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       app.inert = false;
       app.removeAttribute('aria-hidden');
     }
+
+    function isAppLaunch() {
+      return navigator.standalone === true ||
+        ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].some(mode =>
+          window.matchMedia('(display-mode: ' + mode + ')').matches) ||
+        new URL(location.href).searchParams.get('launch') === 'app';
+    }
+    function updateLaunchMode() {
+      if (!navigator.onLine || isAppLaunch()) enterWebApp();
+    }
+    updateLaunchMode();
+    window.addEventListener('offline', updateLaunchMode);
+    window.addEventListener('appinstalled', enterWebApp);
+    // Some devices report "online" even when no internet route is available.
+    async function checkCachedOfflineLaunch() {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration(appScope);
+        if (!reg || reg.scope !== appScope || !reg.active ||
+            reg.active.scriptURL !== new URL('sw.js', appScope).href) return;
+        const cache = await caches.open(offlineCachePrefix + 'v2');
+        if (await cache.match(new URL('index.html', appScope).href)) enterWebApp();
+      } catch {}
+    }
     document.getElementById('btnUseWeb').addEventListener('click', enterWebApp);
     document.getElementById('btnWelcomeInstall').addEventListener('click', () => {
       document.getElementById('pwaInfoModal').style.display = 'flex';
@@ -1202,6 +1236,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         if (!await cache.match(new URL('index.html', appScope).href)) throw new Error('Offline cache missing');
         setOfflineStatus('Offline ready – this address can now open without internet.');
       } catch (error) {
+        if (error.name === 'AbortError' || error instanceof TypeError) await checkCachedOfflineLaunch();
         console.warn('Optional offline preparation:', error);
         setOfflineStatus('Offline copy is not ready. Check your connection and reload online.');
       }
@@ -1229,6 +1264,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     const bottomGalleryInput = document.getElementById('bottomGalleryInput');
     const btnCloseCamera = document.getElementById('btnCloseCamera');
     const btnToggleTorch = document.getElementById('btnToggleTorch');
+    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
     const torchIcon = document.getElementById('torchIcon');
     const btnShutter = document.getElementById('btnShutter');
     const fallbackFileInput = document.getElementById('fallbackFileInput');
@@ -1446,11 +1482,15 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     });
 
     let cameraRequestId = 0;
-    async function openCameraStream() {
+    let cameraDevices = [];
+    let currentCameraDeviceId = '';
+    let currentFacingMode = 'environment';
+    async function openCameraStream(deviceId = null, facingMode = currentFacingMode) {
       closeCameraStream();
       const requestId = ++cameraRequestId;
       cameraModal.style.display = 'flex';
       btnShutter.disabled = true;
+      btnSwitchCamera.disabled = true;
       document.querySelectorAll('#camFormatsBar .format-pill').forEach(b => {
         b.classList.toggle('active', b.dataset.cfmt === activeVfFormat);
       });
@@ -1460,11 +1500,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
-            video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }
+            video: { ...(deviceId ? {deviceId: {exact: deviceId}} : {facingMode: {ideal: facingMode}}), width: {ideal: 3840}, height: {ideal: 2160} }
           });
         } catch (error) {
           if (error.name !== 'OverconstrainedError') throw error;
-          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: 'environment'}}});
+          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: facingMode}}});
         }
         if (requestId !== cameraRequestId) {
           stream.getTracks().forEach(t => t.stop());
@@ -1475,6 +1515,17 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         await cameraVideo.play();
         if (requestId !== cameraRequestId) return;
         track = stream.getVideoTracks()[0];
+        const settings = track.getSettings ? track.getSettings() : {};
+        currentCameraDeviceId = settings.deviceId || deviceId || '';
+        currentFacingMode = settings.facingMode || facingMode;
+        try {
+          if (navigator.mediaDevices.enumerateDevices) {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            if (requestId !== cameraRequestId) return;
+            cameraDevices = devices.filter(device => device.kind === 'videoinput' && device.deviceId);
+          }
+        } catch {}
+        if (requestId !== cameraRequestId) return;
         try { imageCapture = window.ImageCapture ? new ImageCapture(track) : null; }
         catch { imageCapture = null; }
         let caps = {};
@@ -1489,6 +1540,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         btnToggleTorch.style.display = caps.torch ? 'inline-flex' : 'none';
         torchState = false;
         btnShutter.disabled = false;
+        btnSwitchCamera.disabled = cameraDevices.length === 1;
       } catch (error) {
         if (stream) stream.getTracks().forEach(t => t.stop());
         if (requestId !== cameraRequestId) return;
@@ -1525,8 +1577,23 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       cameraModal.style.display = 'none';
       btnShutter.disabled = true;
       btnToggleTorch.style.display = 'none';
+      btnSwitchCamera.disabled = true;
     }
     btnCloseCamera.addEventListener('click', closeCameraStream);
+
+
+    btnSwitchCamera.addEventListener('click', async () => {
+      if (btnSwitchCamera.disabled || !mediaStream) return;
+      const previousDeviceId = currentCameraDeviceId;
+      const index = cameraDevices.findIndex(device => device.deviceId === currentCameraDeviceId);
+      const nextDevice = cameraDevices.length > 1
+        ? cameraDevices[(index + 1) % cameraDevices.length] : null;
+      const nextFacing = currentFacingMode === 'environment' ? 'user' : 'environment';
+      await openCameraStream(nextDevice?.deviceId || null, nextFacing);
+      if (mediaStream && currentCameraDeviceId === previousDeviceId && cameraDevices.length <= 1) {
+        showToast('No other camera is available on this device.');
+      }
+    });
 
     btnToggleTorch.addEventListener('click', async () => {
       if (!track) return;

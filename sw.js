@@ -46,7 +46,7 @@ self.addEventListener('fetch', event => {
 
 const MANIFEST = {
   id: ROOT.pathname, name: 'SmartScan Pro', short_name: 'SmartScan',
-  start_url: ROOT.pathname, scope: ROOT.pathname, display: 'standalone',
+  start_url: ROOT.pathname + '?launch=app', scope: ROOT.pathname, display: 'standalone',
   background_color: '#090d16', theme_color: '#121826',
   icons: [192,512].map(size => ({src: new URL('smartscan-icon-' + size + '.png', ROOT).href, sizes: size + 'x' + size, type: 'image/png', purpose: 'any'}))
 };
