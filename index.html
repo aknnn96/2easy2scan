@@ -6,7 +6,7 @@
       const appMode = navigator.standalone === true ||
         ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].some(mode => matchMedia('(display-mode: ' + mode + ')').matches) ||
         new URL(location.href).searchParams.get('launch') === 'app';
-      if (!navigator.onLine || appMode) document.documentElement.classList.add('skip-welcome');
+      if (!navigator.onLine || appMode) document.documentElement.classList.add('skip-welcome', 'offline-app-mode');
     })();
   </script>
   <meta charset="UTF-8" />
@@ -381,6 +381,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     .save-choice-card i { color: var(--primary); flex-shrink: 0; }
     #welcomeScreen { position:fixed; inset:0; z-index:280; display:flex; align-items:center; justify-content:center; overflow:auto; padding:calc(1.5rem + env(safe-area-inset-top,0px)) 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px)); background:var(--bg); }
     html.skip-welcome #welcomeScreen { display:none; }
+    html.offline-app-mode #btnDeleteOnlyCache, html.offline-app-mode #btnDeleteEverything, html.offline-app-mode #btnPwaInfo { display:none !important; }
     .welcome-card { width:100%; max-width:360px; display:flex; flex-direction:column; gap:1rem; text-align:center; }
     .welcome-card h1 { font-size:1.8rem; }
     .welcome-card p { color:var(--text-sub); line-height:1.5; margin-bottom:0.5rem; }
@@ -401,7 +402,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.1.1</span>
+  <span class="version-stamp">Version 1.2.0</span>
  </div>
 </section>
 
@@ -412,7 +413,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Version 1.1.1</span>
+        <span class="version-stamp">Version 1.2.0</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -666,8 +667,8 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <span style="font-size: 0.6rem; color: var(--text-sub);">Sauvola B/W</span>
         </div>
         <div class="filter-card" data-filter="antiglare">
-          <div>⚡ Flash cleanup</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Glare reduction</span>
+          <div>⚡ Highlights</div>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Highlight control</span>
         </div>
         <div class="filter-card" data-filter="ink">
           <div>🖊️ Ink / stamp</div>
@@ -679,7 +680,8 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         </div>
       </div>
 
-      <!-- 2-Spalten Matrix für 5 Schieberegler -->
+      <p id="filterGuidance" style="font-size:0.72rem;color:var(--text-sub);line-height:1.4;">Best for photos and colored paper. Only brightness and contrast are applied.</p>
+      <!-- Filter controls -->
       <div class="sliders-grid-compact">
         <!-- 1. Brightness (NEU) -->
         <div class="slider-item-compact">
@@ -720,7 +722,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <!-- 5. Glanz- & Blitzdämpfung (über 2 Spalten) -->
         <div class="slider-item-compact" style="grid-column: span 2;">
           <div class="slider-header-compact">
-            <span>⚡ Glare and flash reduction</span>
+            <span>⚡ Highlight reduction</span>
             <span id="valGlare">0</span>
           </div>
           <input type="range" id="sliderGlare" min="0" max="100" value="0" />
@@ -940,11 +942,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     // ====================================================
     const FILTER_PRESETS = {
       original:  { brightness: 0,  contrast: 0,  bleach: 0,  ink: 0,  glare: 0 },
-      magic:     { brightness: 4,  contrast: 15, bleach: 75, ink: 30, glare: 50 },
-      bw:        { brightness: 0,  contrast: 25, bleach: 85, ink: 55, glare: 40 },
-      antiglare: { brightness: 0,  contrast: 10, bleach: 65, ink: 30, glare: 85 },
-      ink:       { brightness: 5,  contrast: 20, bleach: 80, ink: 65, glare: 40 },
-      gray:      { brightness: 0,  contrast: 15, bleach: 70, ink: 40, glare: 30 }
+      magic:     { brightness: 0,  contrast: 8,  bleach: 65, ink: 15, glare: 0 },
+      bw:        { brightness: 0,  contrast: 5,  bleach: 55, ink: 55, glare: 0 },
+      antiglare: { brightness: 0,  contrast: 5,  bleach: 30, ink: 10, glare: 60 },
+      ink:       { brightness: 0,  contrast: 8,  bleach: 40, ink: 35, glare: 0 },
+      gray:      { brightness: 0,  contrast: 8,  bleach: 60, ink: 10, glare: 0 }
     };
 
     let activeFilter = 'original';
@@ -1099,12 +1101,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           window.matchMedia('(display-mode: ' + mode + ')').matches) ||
         new URL(location.href).searchParams.get('launch') === 'app';
     }
+    function enterOfflineApp() {
+      document.documentElement.classList.add('offline-app-mode');
+      enterWebApp();
+    }
     function updateLaunchMode() {
-      if (!navigator.onLine || isAppLaunch()) enterWebApp();
+      if (!navigator.onLine || isAppLaunch()) enterOfflineApp();
     }
     updateLaunchMode();
     window.addEventListener('offline', updateLaunchMode);
-    window.addEventListener('appinstalled', enterWebApp);
+    window.addEventListener('appinstalled', enterOfflineApp);
     // Some devices report "online" even when no internet route is available.
     async function checkCachedOfflineLaunch() {
       try {
@@ -1112,7 +1118,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         if (!reg || reg.scope !== appScope || !reg.active ||
             reg.active.scriptURL !== new URL('sw.js', appScope).href) return;
         const cache = await caches.open(offlineCachePrefix + 'v2');
-        if (await cache.match(new URL('index.html', appScope).href)) enterWebApp();
+        if (await cache.match(new URL('index.html', appScope).href)) enterOfflineApp();
       } catch {}
     }
     document.getElementById('btnUseWeb').addEventListener('click', enterWebApp);
@@ -1485,7 +1491,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     let cameraDevices = [];
     let currentCameraDeviceId = '';
     let currentFacingMode = 'environment';
-    async function openCameraStream(deviceId = null, facingMode = currentFacingMode) {
+    async function openCameraStream(facingMode = 'environment') {
       closeCameraStream();
       const requestId = ++cameraRequestId;
       cameraModal.style.display = 'flex';
@@ -1500,7 +1506,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
-            video: { ...(deviceId ? {deviceId: {exact: deviceId}} : {facingMode: {ideal: facingMode}}), width: {ideal: 3840}, height: {ideal: 2160} }
+            video: {facingMode: {exact: facingMode}}
           });
         } catch (error) {
           if (error.name !== 'OverconstrainedError') throw error;
@@ -1516,7 +1522,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         if (requestId !== cameraRequestId) return;
         track = stream.getVideoTracks()[0];
         const settings = track.getSettings ? track.getSettings() : {};
-        currentCameraDeviceId = settings.deviceId || deviceId || '';
+        currentCameraDeviceId = settings.deviceId || '';
         currentFacingMode = settings.facingMode || facingMode;
         try {
           if (navigator.mediaDevices.enumerateDevices) {
@@ -1531,10 +1537,12 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         let caps = {};
         try { caps = track.getCapabilities ? track.getCapabilities() : {}; } catch {}
         const advanced = {};
+        // Resolution hints apply after camera selection, so they cannot select another lens.
         if (caps.focusMode?.includes('continuous')) advanced.focusMode = 'continuous';
         if (caps.exposureMode?.includes('continuous')) advanced.exposureMode = 'continuous';
-        if (Object.keys(advanced).length && track.applyConstraints) {
-          try { await track.applyConstraints({advanced: [advanced]}); } catch {}
+        if (track.applyConstraints) {
+          try { await track.applyConstraints({width: {ideal: 3840}, height: {ideal: 2160}, advanced: [advanced]}); }
+          catch { if (Object.keys(advanced).length) { try { await track.applyConstraints({advanced: [advanced]}); } catch {} } }
         }
         if (requestId !== cameraRequestId) return;
         btnToggleTorch.style.display = caps.torch ? 'inline-flex' : 'none';
@@ -1585,13 +1593,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     btnSwitchCamera.addEventListener('click', async () => {
       if (btnSwitchCamera.disabled || !mediaStream) return;
       const previousDeviceId = currentCameraDeviceId;
-      const index = cameraDevices.findIndex(device => device.deviceId === currentCameraDeviceId);
-      const nextDevice = cameraDevices.length > 1
-        ? cameraDevices[(index + 1) % cameraDevices.length] : null;
       const nextFacing = currentFacingMode === 'environment' ? 'user' : 'environment';
-      await openCameraStream(nextDevice?.deviceId || null, nextFacing);
-      if (mediaStream && currentCameraDeviceId === previousDeviceId && cameraDevices.length <= 1) {
-        showToast('No other camera is available on this device.');
+      // Ask for the default camera on that side, never cycle through individual lenses.
+      await openCameraStream(nextFacing);
+      if (mediaStream && previousDeviceId && currentCameraDeviceId === previousDeviceId) {
+        showToast('The browser could not switch to another front/back camera.');
       }
     });
 
@@ -2070,6 +2076,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     }
 
     function processSmartCrop(sourceImg, srcCorners) {
+      filterSourceCache = null;
       const pTL = { x: srcCorners.tl.x * sourceImg.width, y: srcCorners.tl.y * sourceImg.height };
       const pTR = { x: srcCorners.tr.x * sourceImg.width, y: srcCorners.tr.y * sourceImg.height };
       const pBR = { x: srcCorners.br.x * sourceImg.width, y: srcCorners.br.y * sourceImg.height };
@@ -2184,6 +2191,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         c.classList.toggle('active', c.dataset.filter === presetKey);
       });
 
+      sliderBleach.disabled = sliderInk.disabled = presetKey === 'original';
+      sliderGlare.disabled = presetKey === 'original' || presetKey === 'bw';
+      const note = document.getElementById('filterGuidance');
+      note.textContent = presetKey === 'original'
+        ? 'Best for photos and colored paper. Only brightness and contrast are applied.'
+        : presetKey === 'bw'
+        ? 'Best for printed text. Increase Ink depth for faint strokes; use Grayscale for pencil or stamps.'
+        : presetKey === 'antiglare'
+        ? 'Reduces bright areas. Detail lost to overexposure cannot be recovered; rescan without flash if needed.'
+        : 'For white-paper documents. Use Original for photos or colored paper.';
       renderPerfectionFilter();
     }
 
@@ -2197,215 +2214,212 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     sliderBrightness.addEventListener('input', () => {
       filterParams.brightness = parseInt(sliderBrightness.value);
       valBrightness.innerText = filterParams.brightness;
-      renderPerfectionFilter();
+      queueFilterRender();
     });
     sliderContrast.addEventListener('input', () => {
       filterParams.contrast = parseInt(sliderContrast.value);
       valContrast.innerText = filterParams.contrast;
-      renderPerfectionFilter();
+      queueFilterRender();
     });
     sliderBleach.addEventListener('input', () => {
       filterParams.bleach = parseInt(sliderBleach.value);
       valBleach.innerText = filterParams.bleach;
-      renderPerfectionFilter();
+      queueFilterRender();
     });
     sliderInk.addEventListener('input', () => {
       filterParams.ink = parseInt(sliderInk.value);
       valInk.innerText = filterParams.ink;
-      renderPerfectionFilter();
+      queueFilterRender();
     });
     sliderGlare.addEventListener('input', () => {
       filterParams.glare = parseInt(sliderGlare.value);
       valGlare.innerText = filterParams.glare;
-      renderPerfectionFilter();
+      queueFilterRender();
     });
 
-    // FILTER-ENGINE: Brightness, Contrast, Glanz & kein Negativ
-    function renderPerfectionFilter() {
-      const w = croppedImageCanvas.width;
-      const h = croppedImageCanvas.height;
-      if (!w || !h) return;
-
-      canvasFilterPreview.width = w;
-      canvasFilterPreview.height = h;
-      const ctx = canvasFilterPreview.getContext('2d');
-
-      const imgData = croppedImageCanvas.getContext('2d').getImageData(0, 0, w, h);
-      const src = imgData.data;
-      const outData = ctx.createImageData(w, h);
-      const dst = outData.data;
-      const len = src.length;
-
-      const bright = filterParams.brightness * 1.5;
-      const contrast = filterParams.contrast;
-      const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-
-      // 100% UNVERÄNDERTES ORIGINAL (außer Brightness/Contrast manuell verstellt)
-      if (activeFilter === 'original') {
-        for (let i = 0; i < len; i += 4) {
-          let r = src[i] + bright;
-          let g = src[i+1] + bright;
-          let b = src[i+2] + bright;
-          if (contrast !== 0) {
-            r = cFactor * (r - 128) + 128;
-            g = cFactor * (g - 128) + 128;
-            b = cFactor * (b - 128) + 128;
+    function estimatePaperBackground(src, w, h) {
+      const cols = Math.max(1, Math.min(24, Math.ceil(w / 32)));
+      const rows = Math.max(1, Math.min(32, Math.ceil(h / 32)));
+      const values = new Float32Array(cols * rows);
+      const neutralTiles = new Uint8Array(cols * rows);
+      for (let cy = 0; cy < rows; cy++) {
+        const y1 = Math.floor(cy * h / rows), y2 = Math.floor((cy + 1) * h / rows);
+        for (let cx = 0; cx < cols; cx++) {
+          const x1 = Math.floor(cx * w / cols), x2 = Math.floor((cx + 1) * w / cols);
+          const hist = new Uint32Array(256), neutral = new Uint32Array(256);
+          let count = 0, neutralCount = 0;
+          const step = Math.max(1, Math.floor(Math.sqrt((x2-x1) * (y2-y1) / 256)));
+          for (let y = y1; y < y2; y += step) for (let x = x1; x < x2; x += step) {
+            const i = (y*w+x)*4, r=src[i], g=src[i+1], b=src[i+2];
+            const luma = Math.round(0.299*r + 0.587*g + 0.114*b);
+            hist[luma]++; count++;
+            if (Math.max(r,g,b)-Math.min(r,g,b) < 30) { neutral[luma]++; neutralCount++; }
           }
-          dst[i] = Math.max(0, Math.min(255, r));
-          dst[i+1] = Math.max(0, Math.min(255, g));
-          dst[i+2] = Math.max(0, Math.min(255, b));
-          dst[i+3] = 255;
-        }
-        ctx.putImageData(outData, 0, 0);
-        return;
-      }
-
-      // SAUVOLA S/W (Text-Dokument)
-      if (activeFilter === 'bw') {
-        const gray = new Uint8Array(w * h);
-        for (let i = 0, j = 0; i < len; i += 4, j++) {
-          let val = (src[i] * 77 + src[i+1] * 150 + src[i+2] * 29) >> 8;
-          gray[j] = Math.max(0, Math.min(255, val + bright));
-        }
-
-        const intSum = new Uint32Array((w + 1) * (h + 1));
-        const intSq = new Float64Array((w + 1) * (h + 1));
-
-        for (let y = 0; y < h; y++) {
-          let rowSum = 0;
-          let rowSq = 0;
-          const rowOffset = (y + 1) * (w + 1);
-          const prevRowOffset = y * (w + 1);
-
-          for (let x = 0; x < w; x++) {
-            const val = gray[y * w + x];
-            rowSum += val;
-            rowSq += val * val;
-
-            intSum[rowOffset + (x + 1)] = intSum[prevRowOffset + (x + 1)] + rowSum;
-            intSq[rowOffset + (x + 1)] = intSq[prevRowOffset + (x + 1)] + rowSq;
-          }
-        }
-
-        const winSize = Math.max(16, Math.floor(w / 16));
-        const halfWin = Math.floor(winSize / 2);
-        const k = 0.20 + (filterParams.ink / 100) * 0.25;
-        const R = 128.0;
-
-        for (let y = 0; y < h; y++) {
-          const y1 = Math.max(0, y - halfWin);
-          const y2 = Math.min(h, y + halfWin);
-          for (let x = 0; x < w; x++) {
-            const x1 = Math.max(0, x - halfWin);
-            const x2 = Math.min(w, x + halfWin);
-            const count = (x2 - x1) * (y2 - y1);
-
-            const sum = intSum[y2 * (w + 1) + x2] - intSum[y1 * (w + 1) + x2] - intSum[y2 * (w + 1) + x1] + intSum[y1 * (w + 1) + x1];
-            const sqSum = intSq[y2 * (w + 1) + x2] - intSq[y1 * (w + 1) + x2] - intSq[y2 * (w + 1) + x1] + intSq[y1 * (w + 1) + x1];
-
-            const mean = sum / count;
-            const variance = (sqSum - ((sum * sum) / count)) / count;
-            const stdDev = Math.sqrt(Math.max(0, variance));
-
-            const thresh = mean * (1.0 + k * ((stdDev / R) - 1.0));
-            const idx = (y * w + x) * 4;
-            const val = (gray[y * w + x] < thresh) ? 0 : 255;
-
-            dst[idx] = val; dst[idx+1] = val; dst[idx+2] = val; dst[idx+3] = 255;
-          }
-        }
-
-        ctx.putImageData(outData, 0, 0);
-        return;
-      }
-
-      // FARB-SCAN PRO / BLITZLICHT
-      const bgSmall = document.createElement('canvas');
-      bgSmall.width = 36; bgSmall.height = Math.round(36 * (h / w));
-      const bgCtx = bgSmall.getContext('2d');
-      bgCtx.drawImage(croppedImageCanvas, 0, 0, bgSmall.width, bgSmall.height);
-
-      const bgFull = document.createElement('canvas');
-      bgFull.width = w; bgFull.height = h;
-      const bgFullCtx = bgFull.getContext('2d');
-      bgFullCtx.imageSmoothingEnabled = true;
-      bgFullCtx.drawImage(bgSmall, 0, 0, w, h);
-      const bgData = bgFullCtx.getImageData(0, 0, w, h).data;
-
-      const bleachStrength = filterParams.bleach / 50;
-      const glareFactor = filterParams.glare / 100;
-      const inkDarken = 1 - (filterParams.ink / 100) * 0.45;
-
-      for (let i = 0; i < len; i += 4) {
-        let r = src[i];
-        let g = src[i+1];
-        let b = src[i+2];
-
-        const bgLuma = Math.max(40, (bgData[i] * 77 + bgData[i+1] * 150 + bgData[i+2] * 29) >> 8);
-        const origLuma = (r * 77 + g * 150 + b * 29) >> 8;
-
-        if (activeFilter === 'antiglare' || glareFactor > 0.1) {
-          if (bgLuma > 195 && origLuma > 210) {
-            const damp = (origLuma - 195) * glareFactor * 0.4;
-            r = Math.max(0, r - damp);
-            g = Math.max(0, g - damp);
-            b = Math.max(0, b - damp);
-          }
-        }
-
-        if (activeFilter === 'magic' || activeFilter === 'antiglare') {
-          const gain = (255 / bgLuma) * bleachStrength;
-          let nr = r * gain + bright;
-          let ng = g * gain + bright;
-          let nb = b * gain + bright;
-
-          const nLuma = (nr * 77 + ng * 150 + nb * 29) >> 8;
-
-          if (nLuma > 215) {
-            const whiteBlend = (nLuma - 215) / 40;
-            nr = nr + (255 - nr) * whiteBlend;
-            ng = ng + (255 - ng) * whiteBlend;
-            nb = nb + (255 - nb) * whiteBlend;
-          } else {
-            nr *= inkDarken;
-            ng *= inkDarken;
-            nb *= inkDarken;
-          }
-
-          if (contrast !== 0) {
-            nr = cFactor * (nr - 128) + 128;
-            ng = cFactor * (ng - 128) + 128;
-            nb = cFactor * (nb - 128) + 128;
-          }
-
-          dst[i] = Math.max(0, Math.min(255, nr));
-          dst[i+1] = Math.max(0, Math.min(255, ng));
-          dst[i+2] = Math.max(0, Math.min(255, nb));
-          dst[i+3] = 255;
-        } else if (activeFilter === 'ink') {
-          const chroma = Math.max(r, g, b) - Math.min(r, g, b);
-          let fr = r + bright, fg = g + bright, fb = b + bright;
-          if (chroma > 18) {
-            dst[i] = Math.min(255, fr * 1.25);
-            dst[i+1] = Math.min(255, fg * 1.25);
-            dst[i+2] = Math.min(255, fb * 1.25);
-          } else if (origLuma > 180) {
-            dst[i] = dst[i+1] = dst[i+2] = 255;
-          } else {
-            dst[i] = fr * inkDarken;
-            dst[i+1] = fg * inkDarken;
-            dst[i+2] = fb * inkDarken;
-          }
-          dst[i+3] = 255;
-        } else if (activeFilter === 'gray') {
-          let grayVal = origLuma > (bgLuma - 25) ? 255 : (origLuma + bright) * inkDarken;
-          if (contrast !== 0) grayVal = cFactor * (grayVal - 128) + 128;
-          dst[i] = dst[i+1] = dst[i+2] = Math.max(0, Math.min(255, grayVal));
-          dst[i+3] = 255;
+          const paperHist = neutralCount > count * 0.2 ? neutral : hist;
+          const target = Math.max(1, Math.ceil((paperHist === neutral ? neutralCount : count) * 0.85));
+          let sum = 0, level = 255;
+          for (let v=0;v<256;v++) { sum += paperHist[v]; if (sum >= target) { level=v; break; } }
+          values[cy*cols+cx] = Math.max(60, level);
+          neutralTiles[cy*cols+cx] = neutralCount > count * 0.2;
         }
       }
+      // Colored blocks and dense ink are foreground, not paper illumination.
+      const sorted = Array.from(values).sort((a,b)=>a-b);
+      const paperLevel = sorted[Math.floor((sorted.length-1)*0.8)];
+      const valid = [];
+      for(let i=0;i<values.length;i++) {
+        if(neutralTiles[i] && values[i]>=paperLevel*0.55) valid.push(i);
+      }
+      if(valid.length) {
+        const filled = new Float32Array(values);
+        for(let i=0;i<values.length;i++) {
+          if(neutralTiles[i] && values[i]>=paperLevel*0.55) continue;
+          let nearest=valid[0],distance=Infinity;
+          for(const j of valid) {
+            const dx=i%cols-j%cols,dy=Math.floor(i/cols)-Math.floor(j/cols),d=dx*dx+dy*dy;
+            if(d<distance){distance=d;nearest=j;}
+          }
+          filled[i]=values[nearest];
+        }
+        values.set(filled);
+      }
+      // Smooth tile estimates without allocating full-size background canvases.
+      const smooth = new Float32Array(values.length);
+      for (let y=0;y<rows;y++) for(let x=0;x<cols;x++) {
+        let sum=0,weight=0;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) {
+          const xx=Math.max(0,Math.min(cols-1,x+dx)), yy=Math.max(0,Math.min(rows-1,y+dy));
+          const k=(dx===0?2:1)*(dy===0?2:1);
+          sum+=values[yy*cols+xx]*k; weight+=k;
+        }
+        smooth[y*cols+x]=sum/weight;
+      }
+      return {cols,rows,values:smooth};
+    }
 
-      ctx.putImageData(outData, 0, 0);
+    function filterScanPixels(src, w, h, preset, params, paper = null, destination = null) {
+      const dst = destination || new Uint8ClampedArray(src.length);
+      if (!w || !h) return dst;
+      const clamp = x => Math.max(0,Math.min(255,x));
+      const bright = params.brightness * 1.5;
+      const cFactor=(259*(params.contrast+255))/(255*(259-params.contrast));
+      if (preset === 'original') {
+        if (!bright && !params.contrast) { dst.set(src); return dst; }
+        for(let i=0;i<src.length;i+=4) {
+          for(let c=0;c<3;c++) dst[i+c]=clamp(cFactor*(src[i+c]+bright-128)+128);
+          dst[i+3]=src[i+3];
+        }
+        return dst;
+      }
+      paper ||= estimatePaperBackground(src,w,h);
+      const x0=new Uint16Array(w), x1=new Uint16Array(w), wx=new Float32Array(w);
+      for(let x=0;x<w;x++) {
+        const gx=Math.max(0,Math.min(paper.cols-1,(x+0.5)*paper.cols/w-0.5));
+        x0[x]=Math.floor(gx); x1[x]=Math.min(paper.cols-1,x0[x]+1); wx[x]=gx-x0[x];
+      }
+      const gray = preset==='bw' ? new Uint8Array(w*h) : null;
+      const denseInk = preset==='bw' ? new Uint8Array(w*h) : null;
+      const bleach = params.bleach/100, ink = params.ink/100, glare=params.glare/100;
+      for(let y=0;y<h;y++) {
+        const gy=Math.max(0,Math.min(paper.rows-1,(y+0.5)*paper.rows/h-0.5));
+        const y0=Math.floor(gy), y1=Math.min(paper.rows-1,y0+1), wy=gy-y0;
+        for(let x=0;x<w;x++) {
+          const i=(y*w+x)*4;
+          let r=src[i],g=src[i+1],b=src[i+2];
+          const top=paper.values[y0*paper.cols+x0[x]]*(1-wx[x])+paper.values[y0*paper.cols+x1[x]]*wx[x];
+          const bottom=paper.values[y1*paper.cols+x0[x]]*(1-wx[x])+paper.values[y1*paper.cols+x1[x]]*wx[x];
+          const background=top*(1-wy)+bottom*wy;
+          const luma=0.299*r+0.587*g+0.114*b;
+          const maxChannel=Math.max(r,g,b), chroma=maxChannel-Math.min(r,g,b);
+          // Zero whitening is identity; gain is bounded and preserves RGB ratios.
+          const gain=Math.min(2.2,1+bleach*(255/background-1),255/Math.max(1,maxChannel));
+          r*=gain; g*=gain; b*=gain;
+          let normalized=0.299*r+0.587*g+0.114*b;
+          if (preset==='bw') {
+            // Highlight reduction is unnecessary for binary output.
+            gray[y*w+x]=clamp(cFactor*(normalized+bright-128)+128);
+            denseInk[y*w+x] = luma/background < 0.38;
+            continue;
+          }
+          // Smooth transitions preserve pencil strokes and prevent hard white cutoffs.
+          const foreground=Math.max(0,Math.min(1,(background-luma)/Math.max(24,background*0.5)));
+          const darken=1-ink*0.4*foreground;
+          r*=darken; g*=darken; b*=darken;
+          if (preset==='gray') r=g=b=normalized*darken;
+          // Only neutral, near-paper pixels receive a small whitening blend.
+          if (chroma<18 && normalized>240 && preset!=='antiglare') {
+            const blend=Math.min(0.35,bleach*0.35)*(normalized-240)/15;
+            r+=(255-r)*blend;g+=(255-g)*blend;b+=(255-b)*blend;
+          }
+          const highlight=Math.max(0,Math.min(1,(normalized-215)/40));
+          const damp=glare*highlight*18;
+          dst[i]=clamp(cFactor*(r+bright-damp-128)+128);
+          dst[i+1]=clamp(cFactor*(g+bright-damp-128)+128);
+          dst[i+2]=clamp(cFactor*(b+bright-damp-128)+128);
+          dst[i+3]=src[i+3];
+        }
+      }
+      if (preset!=='bw') return dst;
+      // Sauvola with rolling column sums: O(width) extra statistics memory.
+      const half=Math.max(1,Math.min(80,Math.round(Math.min(w,h)/40)));
+      const colSum=new Float64Array(w), colSq=new Float64Array(w);
+      function addRow(y,sign) {
+        for(let x=0;x<w;x++) { const v=gray[y*w+x];colSum[x]+=sign*v;colSq[x]+=sign*v*v; }
+      }
+      for(let y=0;y<=Math.min(h-1,half);y++) addRow(y,1);
+      // Increasing ink lowers k, raising the threshold and retaining more faint ink.
+      const k=0.34-ink*0.28;
+      for(let y=0;y<h;y++) {
+        if(y>0) {
+          if(y+half<h) addRow(y+half,1);
+          if(y-half-1>=0) addRow(y-half-1,-1);
+        }
+        const rows=Math.min(h-1,y+half)-Math.max(0,y-half)+1;
+        let sum=0,sq=0;
+        for(let x=0;x<=Math.min(w-1,half);x++){sum+=colSum[x];sq+=colSq[x];}
+        for(let x=0;x<w;x++) {
+          if(x>0) {
+            if(x+half<w){sum+=colSum[x+half];sq+=colSq[x+half];}
+            if(x-half-1>=0){sum-=colSum[x-half-1];sq-=colSq[x-half-1];}
+          }
+          const count=rows*(Math.min(w-1,x+half)-Math.max(0,x-half)+1);
+          const mean=sum/count, std=Math.sqrt(Math.max(0,sq/count-mean*mean));
+          const threshold=mean*(1+k*(std/128-1));
+          const pixel=gray[y*w+x],v=denseInk[y*w+x]||pixel<=2||pixel<threshold?0:255,i=(y*w+x)*4;
+          dst[i]=dst[i+1]=dst[i+2]=v;dst[i+3]=src[i+3];
+        }
+      }
+      return dst;
+    }
+
+    let filterSourceCache = null;
+    let filterFrame = null;
+    function queueFilterRender() {
+      if (filterFrame !== null) return;
+      filterFrame = requestAnimationFrame(() => { filterFrame=null;renderPerfectionFilter(); });
+    }
+    function renderPerfectionFilter(fullResolution = false) {
+      const sourceWidth=croppedImageCanvas.width,sourceHeight=croppedImageCanvas.height;
+      if(!sourceWidth||!sourceHeight)return;
+      const scale=fullResolution?1:Math.min(1,1400/Math.max(sourceWidth,sourceHeight));
+      const w=Math.max(1,Math.round(sourceWidth*scale)),h=Math.max(1,Math.round(sourceHeight*scale));
+      if(!filterSourceCache || filterSourceCache.w!==w || filterSourceCache.h!==h) {
+        let workingCanvas=croppedImageCanvas;
+        if(scale<1) {
+          workingCanvas=document.createElement('canvas');workingCanvas.width=w;workingCanvas.height=h;
+          const working=workingCanvas.getContext('2d');working.imageSmoothingQuality='high';
+          working.drawImage(croppedImageCanvas,0,0,w,h);
+        }
+        const source=workingCanvas.getContext('2d').getImageData(0,0,w,h).data;
+        filterSourceCache={w,h,source,paper:null};
+      }
+      if(activeFilter!=='original' && !filterSourceCache.paper) {
+        filterSourceCache.paper=estimatePaperBackground(filterSourceCache.source,w,h);
+      }
+      canvasFilterPreview.width=w;canvasFilterPreview.height=h;
+      const ctx=canvasFilterPreview.getContext('2d'),output=ctx.createImageData(w,h);
+      filterScanPixels(filterSourceCache.source,w,h,activeFilter,filterParams,filterSourceCache.paper,output.data);
+      ctx.putImageData(output,0,0);
     }
 
     btnCancelScanEdit.addEventListener('click', () => {
@@ -2419,6 +2433,8 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     let pendingScanAspect = 1;
 
     btnOpenSaveChoiceModal.addEventListener('click', () => {
+      if (filterFrame !== null) { cancelAnimationFrame(filterFrame); filterFrame=null; }
+      renderPerfectionFilter(true);
       pendingScanDataUrl = canvasFilterPreview.toDataURL('image/jpeg', 0.92);
       pendingScanAspect = canvasFilterPreview.width / canvasFilterPreview.height;
 
