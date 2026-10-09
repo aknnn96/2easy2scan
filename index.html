@@ -492,12 +492,17 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       </div>
 
       <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.45; display: flex; flex-direction: column; gap: 0.75rem;">
-        <button class="btn" id="btnNativeInstall" style="display:none;justify-content:center;">App installieren</button>
-        <p id="installAvailability">Wenn Chrome die direkte Installation freigibt, erscheint hier „App installieren“.</p>
-        <p>In Chrome: Menü ⋮ → „Zum Startbildschirm hinzufügen“. Die Verknüpfung öffnet dieselbe Webadresse.</p>
+        <p><strong>So nutzt du SmartScan offline:</strong></p>
+        <ol style="padding-left:1.25rem;display:grid;gap:0.45rem;">
+          <li>Diese Seite einmal mit Internet öffnen und unten auf „Offline bereit“ warten.</li>
+          <li>Die App installieren oder über Chrome zum Startbildschirm hinzufügen.</li>
+          <li>Danach kannst du sie über das Symbol auch ohne Internet öffnen, scannen, bearbeiten und PDFs speichern.</li>
+        </ol>
         <p id="offlineStatus" role="status" aria-live="polite">Offline-Kopie wird geprüft …</p>
-        <p>Einmal online öffnen und auf „Offline bereit“ warten. Danach sind Scannen, Bearbeiten und PDF-Export ohne Internet verfügbar. Die Kamera benötigt weiterhin deine Browserberechtigung.</p>
-        <p>Scans bleiben lokal in diesem Browser gespeichert. Gelöschte Websitedaten oder vom Browser entfernter Speicher können die Offline-Kopie und Dokumente entfernen. Wichtige Dokumente als PDF sichern.</p>
+        <button class="btn" id="btnNativeInstall" disabled style="display:inline-flex;width:100%;justify-content:center;padding:0.8rem;">App installieren</button>
+        <p id="installAvailability" role="status" aria-live="polite">Chrome hat die direkte Installation noch nicht freigegeben. Sobald der Dialog verfügbar ist, wird der Button aktiv.</p>
+        <p>Falls der Button grau bleibt: Chrome-Menü ⋮ → „Zum Startbildschirm hinzufügen“. Auch diese Verknüpfung kann die vorbereitete Offline-Kopie öffnen.</p>
+        <p>Scans bleiben lokal in diesem Browser gespeichert. Werden Websitedaten oder Browser-Speicher gelöscht, musst du die Offline-Kopie erneut online vorbereiten. Wichtige Dokumente als PDF sichern.</p>
       </div>
     </div>
   </div>
@@ -1063,7 +1068,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     window.addEventListener('beforeinstallprompt', event => {
       event.preventDefault();
       nativeInstallPrompt = event;
-      nativeInstallButton.style.display = 'inline-flex';
+      nativeInstallButton.disabled = false;
       document.getElementById('btnPwaInfo').style.display = 'inline-flex';
       document.getElementById('installAvailability').textContent = 'Direkte Installation verfügbar.';
     });
@@ -1071,7 +1076,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       const prompt = nativeInstallPrompt;
       if (!prompt) return;
       nativeInstallPrompt = null;
-      nativeInstallButton.style.display = 'none';
+      nativeInstallButton.disabled = true;
       try {
         await prompt.prompt();
         const choice = await prompt.userChoice;
@@ -1083,8 +1088,9 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     });
     window.addEventListener('appinstalled', () => {
       nativeInstallPrompt = null;
-      nativeInstallButton.style.display = 'none';
-      document.getElementById('installAvailability').textContent = 'App installiert.';
+      nativeInstallButton.disabled = true;
+      nativeInstallButton.textContent = 'App installiert';
+      document.getElementById('installAvailability').textContent = 'Du kannst die App über das Startbildschirm-Symbol öffnen.';
     });
     function enableInstallManifest() {
       const worker = navigator.serviceWorker.controller;
