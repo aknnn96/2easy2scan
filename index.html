@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>SmartScan Pro</title>
 
-  <!-- PWA & Native App Metatags -->
+  <!-- PWA Metatags für native App-Optik am Smartphone -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="SmartScan Pro" />
   <meta name="theme-color" content="#121826" />
 
-  <!-- Dynamisches Inline-Manifest für "Als App installieren" -->
+  <!-- Dynamisches Inline-Manifest -->
   <link rel="manifest" id="dynamicManifest" />
 
-  <!-- Lucide Icons, pdf-lib & SortableJS -->
+  <!-- Lucide Icons, pdf-lib & SortableJS (100% lokal im Browser) -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -36,7 +36,6 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     html, body {
-      overscroll-behavior-y: none; /* Verhindert elastisches Browser-Gummiband-Scrollen */
       background-color: var(--bg); color: var(--text-main); min-height: 100vh;
       display: flex; justify-content: center; overflow-x: hidden;
     }
@@ -48,7 +47,7 @@
     }
 
     header {
-      background: rgba(18, 24, 38, 0.94); backdrop-filter: blur(14px);
+      background: rgba(18, 24, 38, 0.92); backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--surface-border); position: sticky; top: 0; z-index: 40;
       padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
     }
@@ -70,7 +69,10 @@
     .btn-icon { width: 36px; height: 36px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    main { flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem; }
+    main {
+      flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: 1rem;
+      padding-bottom: 6rem; touch-action: pan-y !important; /* Ermöglicht natürliches Scrollen */
+    }
 
     .env-notice {
       background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35);
@@ -86,18 +88,23 @@
     }
     .empty-state i { color: var(--primary); width: 44px; height: 44px; margin-bottom: 0.75rem; opacity: 0.85; }
 
-    /* Grid */
-    .pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem; }
+    /* Grid & Cards mit touch-action für unterbrechungsfreies Scrollen */
+    .pages-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem;
+      touch-action: pan-y !important;
+    }
     .page-card {
       background: var(--surface); border: 1px solid var(--surface-border);
       border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
       box-shadow: 0 4px 14px rgba(0,0,0,0.3); position: relative;
+      touch-action: pan-y !important;
     }
     .page-card .thumb-wrapper {
-      position: relative; width: 100%; height: 240px; background: #080d1a;
+      position: relative; width: 100%; height: 240px; background: #ffffff; /* Weißer Standard */
       display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer;
+      touch-action: pan-y !important;
     }
-    .page-card img { width: 100%; height: 100%; object-fit: contain; }
+    .page-card img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
     .page-card .format-tag {
       position: absolute; top: 8px; left: 8px; background: rgba(15,23,42,0.85);
       backdrop-filter: blur(4px); font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.45rem;
@@ -124,15 +131,15 @@
     .card-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
     .card-handle { cursor: grab; display: flex; align-items: center; gap: 0.2rem; color: var(--text-sub); font-size: 0.78rem; font-weight: 600; }
 
-    /* Bottom Bar */
+    /* Mobile Bottom Bar (Aufgeräumt ohne den störenden Formate-Button) */
     .mobile-bottom-bar {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 560px; background: rgba(18, 24, 38, 0.95);
       backdrop-filter: blur(16px); border-top: 1px solid var(--surface-border);
-      padding: 0.65rem 1.25rem; display: flex; justify-content: space-around; align-items: center; z-index: 45;
+      padding: 0.65rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 45;
     }
     .floating-shutter-trigger {
-      width: 56px; height: 56px; border-radius: 50%; background: var(--primary);
+      width: 58px; height: 58px; border-radius: 50%; background: var(--primary);
       border: 3px solid rgba(255,255,255,0.25); color: #fff; display: flex; align-items: center; justify-content: center;
       box-shadow: 0 4px 16px rgba(59,130,246,0.45); cursor: pointer; transition: transform 0.15s; margin-top: -24px;
     }
@@ -187,7 +194,6 @@
     }
     .shutter-btn::after { content: ''; width: 54px; height: 54px; background: #fff; border-radius: 50%; }
 
-    /* Formate-Pills */
     .formats-scroll-bar {
       display: flex; gap: 0.35rem; background: rgba(15,23,42,0.85); padding: 0.25rem 0.4rem;
       border-radius: 9999px; border: 1px solid var(--surface-border); overflow-x: auto; max-width: 80vw;
@@ -221,9 +227,7 @@
       transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none;
     }
 
-    /* ========================================================
-       SMARTE QUADRANTEN-LUPE (Verdeckt den Finger nie mehr!)
-       ======================================================== */
+    /* Smarte Lupe */
     .crop-loupe {
       position: fixed; width: 130px; height: 130px; border-radius: 50%;
       border: 3.5px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.9);
@@ -262,7 +266,7 @@
       overflow: hidden; padding: 0.85rem; position: relative;
     }
     .canvas-sheet {
-      background: #ffffff; position: relative;
+      background: #ffffff !important; position: relative;
       max-width: 460px; max-height: calc(100vh - 140px); width: 100%;
       box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 4px; overflow: hidden;
       touch-action: none;
@@ -272,6 +276,7 @@
       position: absolute; touch-action: none; user-select: none;
       cursor: grab; display: flex; align-items: center; justify-content: center;
     }
+    .scan-item:active { cursor: grabbing; }
     .scan-item.selected { outline: 2px dashed var(--primary); box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
     .scan-item img { width: 100%; height: 100%; object-fit: fill; pointer-events: none; border: 1px solid rgba(0,0,0,0.08); }
 
@@ -332,7 +337,7 @@
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Build: 2026-10-09 21:08:45</span>
+        <span class="version-stamp">Build: 2026-10-09 21:26:15</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="PDF Speichern">
@@ -357,27 +362,26 @@
         <i data-lucide="layers"></i>
         <h3>Keine Dokumente vorhanden</h3>
         <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.35rem; max-width: 320px;">
-          Tippe unten auf den Kamera-Button oder erstelle eine Blanko-Seite.
+          Tippe unten auf den Kamera-Button oder erstelle oben eine Blanko-Seite.
         </p>
       </div>
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
     </main>
 
+    <!-- Mobile Bottom Bar: Kamera in der Mitte, Galerie rechts -->
     <div class="mobile-bottom-bar">
-      <button class="btn btn-secondary" id="btnOpenNewBlankModalBottom" style="padding: 0.45rem 0.75rem;">
-        <i data-lucide="layout-grid"></i>
-        <span>Formate</span>
-      </button>
+      <div style="width: 80px;"></div>
 
       <div class="floating-shutter-trigger" id="btnStartScan" title="Scan starten">
         <i data-lucide="camera" style="width: 26px; height: 26px;"></i>
         <input type="file" id="nativeCameraFallbackInput" accept="image/*" capture="environment" style="display:none;" />
       </div>
 
-      <button class="btn btn-secondary" id="btnQuickBlankA4" style="padding: 0.45rem 0.75rem;">
-        <i data-lucide="file-plus"></i>
-        <span>A4 Blanko</span>
-      </button>
+      <label class="btn btn-secondary" style="padding: 0.45rem 0.75rem; cursor:pointer;" title="Aus Galerie wählen">
+        <i data-lucide="image"></i>
+        <span>Galerie</span>
+        <input type="file" id="bottomGalleryInput" accept="image/*" style="display:none;" />
+      </label>
     </div>
   </div>
 
@@ -423,13 +427,13 @@
     </div>
   </div>
 
-  <!-- Smarte Quadranten-Lupe (Nie durch den Finger verdeckt) -->
+  <!-- Vergrößerungs-Lupe -->
   <div class="crop-loupe" id="cropLoupe">
     <canvas id="loupeCanvas" width="130" height="130"></canvas>
     <div class="loupe-crosshair"></div>
   </div>
 
-  <!-- Scan-Editor Modal: Strikter 2-Schritte-Ablauf -->
+  <!-- Scan-Editor Modal (Schritt 1: Zuschnitt | Schritt 2: Filter) -->
   <div id="scanEditorModal" class="modal-fullscreen">
     <!-- Header Schritt 1: Zuschnitt -->
     <header id="cropHeader" style="background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem;">
@@ -465,7 +469,7 @@
       </div>
     </div>
 
-    <!-- Panel Schritt 1: Zuschnitt -->
+    <!-- Panel Schritt 1: Zuschnitt & 90°-Drehung -->
     <div class="controls-panel" id="cropControlsPanel">
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;">
         <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600;">Papierformat wählen:</span>
@@ -605,19 +609,19 @@
         <div class="formats-grid" id="pickNewSheetFormatsGrid">
           <div class="format-card active" data-pfmt="a4">
             <div class="f-title">📄 DIN A4</div>
-            <div class="f-desc">210 × 297 mm</div>
+            <div class="f-desc">Standard</div>
           </div>
           <div class="format-card" data-pfmt="a5">
             <div class="f-title">📝 DIN A5</div>
-            <div class="f-desc">148 × 210 mm</div>
+            <div class="f-desc">Kompakt</div>
           </div>
           <div class="format-card" data-pfmt="a3">
             <div class="f-title">📐 DIN A3</div>
-            <div class="f-desc">297 × 420 mm</div>
+            <div class="f-desc">Großformat</div>
           </div>
           <div class="format-card" data-pfmt="a6">
             <div class="f-title">🏷️ DIN A6</div>
-            <div class="f-desc">105 × 148 mm</div>
+            <div class="f-desc">Postkarte</div>
           </div>
         </div>
 
@@ -711,7 +715,6 @@
     <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem; flex-wrap: wrap;">
       <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
       
-      <!-- Format dieser Seite nachträglich ändern Button -->
       <button class="btn btn-secondary" id="btnOpenChangeFormatModal" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="file-text" style="width:13px;"></i>
         <span id="lblCurrentSheetFormat">Format: DIN A4 ▾</span>
@@ -780,9 +783,7 @@
   <script>
     lucide.createIcons();
 
-    // ----------------------------------------------------
-    // INLINE PWA-MANIFEST FÜR "ALS APP INSTALLIEREN"
-    // ----------------------------------------------------
+    // Dynamisches Manifest generieren
     const pwaIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="128" fill="#121826"/><path d="M128 160h256v192H128z" fill="none" stroke="#3b82f6" stroke-width="32" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#3b82f6"/></svg>`;
     const pwaIconUrl = "data:image/svg+xml;base64," + btoa(pwaIconSvg);
     const pwaManifest = {
@@ -808,7 +809,10 @@
       free:   { label: 'Frei',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
     };
 
-    // State
+    const A4_RENDER_W = 1240;
+    const A4_RENDER_H = 1754;
+
+    // State (100% im RAM)
     let pagesData = [];
     let activePageIndex = null;
     let targetPageForNewScan = null;
@@ -832,6 +836,7 @@
     const cameraVideo = document.getElementById('cameraVideo');
     const btnStartScan = document.getElementById('btnStartScan');
     const nativeCameraFallbackInput = document.getElementById('nativeCameraFallbackInput');
+    const bottomGalleryInput = document.getElementById('bottomGalleryInput');
     const btnCloseCamera = document.getElementById('btnCloseCamera');
     const btnToggleTorch = document.getElementById('btnToggleTorch');
     const torchIcon = document.getElementById('torchIcon');
@@ -871,8 +876,6 @@
 
     const blankFormatModal = document.getElementById('blankFormatModal');
     const btnOpenNewBlankModal = document.getElementById('btnOpenNewBlankModal');
-    const btnOpenNewBlankModalBottom = document.getElementById('btnOpenNewBlankModalBottom');
-    const btnQuickBlankA4 = document.getElementById('btnQuickBlankA4');
     const btnCloseBlankModal = document.getElementById('btnCloseBlankModal');
     const btnCreateBlankSheet = document.getElementById('btnCreateBlankSheet');
 
@@ -929,9 +932,13 @@
       lucide.createIcons();
     }
 
+    // SortableJS mit Touch-Verzögerung für flüssiges Scrollen auf dem Smartphone
     new Sortable(pagesGrid, {
       animation: 200,
       handle: '.card-handle',
+      touchStartThreshold: 10,
+      delay: 150,
+      delayOnTouchOnly: true,
       onEnd: (evt) => {
         const item = pagesData.splice(evt.oldIndex, 1)[0];
         pagesData.splice(evt.newIndex, 0, item);
@@ -942,26 +949,28 @@
     // ----------------------------------------------------
     // 1. BLANKO-SEITEN ERSTELLUNG
     // ----------------------------------------------------
-    btnQuickBlankA4.addEventListener('click', () => {
-      createBlankSheet('a4');
-    });
-
     function createBlankSheet(fmtKey) {
+      const fmt = FORMAT_PRESETS[fmtKey || 'a4'];
+      const cvs = document.createElement('canvas');
+      cvs.width = Math.round(fmt.wPt * 2);
+      cvs.height = Math.round(fmt.hPt * 2);
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#ffffff'; // Garantiert reinweiß
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+
       const newPage = {
         id: 'page_' + Date.now(),
-        formatKey: fmtKey,
-        previewUrl: '',
+        formatKey: fmtKey || 'a4',
+        previewUrl: cvs.toDataURL('image/jpeg', 0.88),
         items: []
       };
       pagesData.push(newPage);
       openLayoutEditor(pagesData.length - 1);
-      showToast(`Weiße ${FORMAT_PRESETS[fmtKey].label}-Seite erstellt`);
+      showToast(`Weiße ${fmt.label}-Seite erstellt`);
     }
 
-    [btnOpenNewBlankModal, btnOpenNewBlankModalBottom].forEach(btn => {
-      btn.addEventListener('click', () => {
-        blankFormatModal.style.display = 'flex';
-      });
+    btnOpenNewBlankModal.addEventListener('click', () => {
+      blankFormatModal.style.display = 'flex';
     });
 
     btnCloseBlankModal.addEventListener('click', () => {
@@ -982,12 +991,12 @@
     });
 
     // ----------------------------------------------------
-    // 2. KAMERA, HARDWARE-AUTOFOKUS & SUCHERRAHMEN
+    // 2. KAMERA & SUCHERRAHMEN
     // ----------------------------------------------------
     let mediaStream = null;
     let track = null;
     let torchState = false;
-    let imageCapture = null; // Nutzt Hardware-Photo-Sensor falls verfügbar!
+    let imageCapture = null;
 
     btnStartScan.addEventListener('click', () => {
       targetPageForNewScan = null;
@@ -1001,6 +1010,21 @@
         openCameraStream();
       }
     }
+
+    bottomGalleryInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          openScanCropEditor(img, null);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
 
     nativeCameraFallbackInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -1051,7 +1075,6 @@
       });
       updateViewfinderGeometry();
 
-      // OPTIMIERTE KONSTRAINTS: Maximale Auflösung & Hardware-Autofokus anfordern!
       const constraints = {
         video: {
           facingMode: { ideal: 'environment' },
@@ -1065,19 +1088,16 @@
         cameraVideo.srcObject = stream;
         track = stream.getVideoTracks()[0];
 
-        // Hardware ImageCapture für gestochen scharfe Einzelfotos
         if (window.ImageCapture) {
           imageCapture = new ImageCapture(track);
         } else {
           imageCapture = null;
         }
 
-        // Hardware-Autofokus und Belichtung aktivieren
         const caps = track.getCapabilities ? track.getCapabilities() : {};
         const adv = {};
         if (caps.focusMode && caps.focusMode.includes('continuous')) adv.focusMode = 'continuous';
         if (caps.exposureMode && caps.exposureMode.includes('continuous')) adv.exposureMode = 'continuous';
-        if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) adv.whiteBalanceMode = 'continuous';
 
         if (Object.keys(adv).length > 0 && track.applyConstraints) {
           try { await track.applyConstraints({ advanced: [adv] }); } catch(err){}
@@ -1095,7 +1115,6 @@
       });
     }
 
-    // Tippen auf den Kamerasucher triggert Hardware-Refokus
     cameraVideo.addEventListener('click', async () => {
       if (track && track.applyConstraints) {
         try {
@@ -1165,7 +1184,6 @@
     btnShutter.addEventListener('click', async () => {
       btnShutter.style.opacity = '0.5';
 
-      // Wenn Hardware ImageCapture verfügbar: Echtes, scharfes Foto anfordern!
       if (imageCapture) {
         try {
           const blob = await imageCapture.takePhoto();
@@ -1179,11 +1197,10 @@
           img.src = URL.createObjectURL(blob);
           return;
         } catch(e) {
-          console.warn("ImageCapture takePhoto fallback auf Canvas:", e);
+          console.warn("ImageCapture fallback:", e);
         }
       }
 
-      // Fallback auf Canvas Frame
       const projectedCorners = getVfCropInVideoSpace(cameraVideo.videoWidth, cameraVideo.videoHeight);
       const snapCanvas = document.createElement('canvas');
       snapCanvas.width = cameraVideo.videoWidth;
@@ -1262,7 +1279,6 @@
         cropControlsPanel.style.display = 'none';
         filterControlsPanel.style.display = 'flex';
 
-        // WARPT OHNE JEDE VERZERRUNG!
         warpScannedDocument(currentRawImage, corners);
         renderPerfectionFilter();
       }
@@ -1328,13 +1344,12 @@
 
       corners = {
         tl: { x: Math.max(0.02, Math.min(0.98 - boxW, cx - halfW)), y: Math.max(0.02, Math.min(0.98 - boxH, cy - halfH)) },
-        tr: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.max(0.02, Math.min(0.98 - boxH, cy - halfH)) },
+        tr: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.max(0.02, min098 = cy - halfH) },
         br: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.min(0.98, Math.max(0.02 + boxH, cy + halfH)) },
         bl: { x: Math.max(0.02, Math.min(0.98 - boxW, cx - halfW)), y: Math.min(0.98, Math.max(0.02 + boxH, cy + halfH)) }
       };
     }
 
-    // 90° DREHUNG IM ZUSCHNITT (Bild und Koordinaten synchron rotieren)
     btnRotateSource.addEventListener('click', async () => {
       const rotCanvas = document.createElement('canvas');
       rotCanvas.width = currentRawImage.height;
@@ -1408,9 +1423,7 @@
       });
     }
 
-    // ========================================================
-    // SMARTE LUPE: Platziert sich immer in der freien Ecke!
-    // ========================================================
+    // Smarte Lupe
     function updateLoupe(normX, normY, clientX, clientY) {
       if (!currentRawImage) return;
 
@@ -1419,11 +1432,9 @@
       const winW = window.innerWidth;
       const winH = window.innerHeight;
 
-      // Quadranten-Erkennung: Wo ist der Finger?
       const isRight = clientX > winW / 2;
       const isBottom = clientY > winH / 2;
 
-      // Die Lupe wandert in die entgegengesetzte Bildschirmecke!
       if (isRight) {
         cropLoupe.style.left = '20px';
         cropLoupe.style.right = 'auto';
@@ -1433,14 +1444,13 @@
       }
 
       if (isBottom) {
-        cropLoupe.style.top = '70px'; // Oben platzieren
+        cropLoupe.style.top = '70px';
         cropLoupe.style.bottom = 'auto';
       } else {
         cropLoupe.style.top = 'auto';
-        cropLoupe.style.bottom = '90px'; // Unten platzieren
+        cropLoupe.style.bottom = '90px';
       }
 
-      // 3.0-fache Vergrößerung aus dem Originalbild rendern
       const srcX = normX * currentRawImage.width;
       const srcY = normY * currentRawImage.height;
       const zoomSize = 50;
@@ -1475,7 +1485,7 @@
       return inside;
     }
 
-    // Rahmen als Ganzes verschieben
+    // Verschieben des Rahmens
     let isMovingEntireBox = false;
     let boxMoveStart = { x: 0, y: 0 };
     let initialCornersState = null;
@@ -1528,7 +1538,6 @@
       }
     });
 
-    // Ecken einzeln anfassen mit Smarter Lupe
     Object.keys(handles).forEach(key => {
       const handle = handles[key];
       let isDragging = false;
@@ -1575,7 +1584,7 @@
     });
 
     // ----------------------------------------------------
-    // 4. PERSPEKTIVISCHER WARP (OHNE JEDE VERZERRUNG!)
+    // 4. PERSPEKTIVISCHER WARP (OHNE VERZERRUNG)
     // ----------------------------------------------------
     function getPerspectiveTransform(src, dst) {
       let a = [], b = [];
@@ -1610,7 +1619,6 @@
       return [...x, 1];
     }
 
-    // Berechnet die echten euklidischen Kantenlängen -> 0% VERZERRUNG!
     function warpScannedDocument(sourceImg, srcCorners) {
       const pTL = { x: srcCorners.tl.x * sourceImg.width, y: srcCorners.tl.y * sourceImg.height };
       const pTR = { x: srcCorners.tr.x * sourceImg.width, y: srcCorners.tr.y * sourceImg.height };
@@ -1619,7 +1627,6 @@
 
       const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
 
-      // Exakte physikalische Kantenlängen
       const outWidth = Math.round(Math.max(dist(pTL, pTR), dist(pBL, pBR)));
       const outHeight = Math.round(Math.max(dist(pTL, pBL), dist(pTR, pBR)));
 
@@ -1694,7 +1701,6 @@
       });
     });
 
-    // FARB- & DOKUMENTENFILTER
     function renderPerfectionFilter() {
       if (!warpedOriginalData) return;
 
@@ -1715,7 +1721,7 @@
         return;
       }
 
-      // SAUVOLA S/W (Text-Dokument)
+      // SAUVOLA S/W
       if (activeFilter === 'bw') {
         const gray = new Uint8Array(w * h);
         for (let i = 0, j = 0; i < len; i += 4, j++) {
@@ -1780,7 +1786,7 @@
         return;
       }
 
-      // FARB-SCAN PRO / BLITZLICHT-DÄMPFUNG
+      // FARB-SCAN PRO / BLITZLICHT
       const bgSmall = document.createElement('canvas');
       bgSmall.width = 36; bgSmall.height = Math.round(36 * (h / w));
       const bgCtx = bgSmall.getContext('2d');
@@ -1804,7 +1810,6 @@
         const bgLuma = Math.max(40, (bgData[i] * 77 + bgData[i+1] * 150 + bgData[i+2] * 29) >> 8);
         const origLuma = (r * 77 + g * 150 + b * 29) >> 8;
 
-        // Blitzlicht- & Glanz-Kompensation
         if (activeFilter === 'antiglare' || glareFactor > 0.1) {
           if (bgLuma > 195 && origLuma > 210) {
             const damp = (origLuma - 195) * glareFactor * 0.4;
@@ -1896,7 +1901,7 @@
       saveChoiceModal.style.display = 'none';
     });
 
-    // 1. Als Vollseite
+    // 1. Vollseite
     btnSaveAsFullPage.addEventListener('click', () => {
       saveChoiceModal.style.display = 'none';
       scanEditorModal.style.display = 'none';
@@ -1975,10 +1980,18 @@
 
     btnTargetNewCustomSheet.addEventListener('click', () => {
       pickTargetSheetModal.style.display = 'none';
+      const fmt = FORMAT_PRESETS[selectedPlacementFormat || 'a4'];
+      const cvs = document.createElement('canvas');
+      cvs.width = Math.round(fmt.wPt * 2);
+      cvs.height = Math.round(fmt.hPt * 2);
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+
       const newPage = {
         id: 'page_' + Date.now(),
         formatKey: selectedPlacementFormat,
-        previewUrl: '',
+        previewUrl: cvs.toDataURL('image/jpeg', 0.88),
         items: []
       };
       pagesData.push(newPage);
@@ -2014,7 +2027,7 @@
     }
 
     // ----------------------------------------------------
-    // 6. MONTAGE-EDITOR (SAUBERES TOUCH-DRAG, DREHEN & FORMATWECHSEL)
+    // 6. MONTAGE-EDITOR
     // ----------------------------------------------------
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
@@ -2029,7 +2042,6 @@
       renderSheetItems();
     }
 
-    // Format der Seite NACHTRÄGLICH ändern
     btnOpenChangeFormatModal.addEventListener('click', () => {
       const page = pagesData[activePageIndex];
       document.querySelectorAll('#changeSheetFormatsGrid .format-card').forEach(card => {
@@ -2052,7 +2064,6 @@
         lblCurrentSheetFormat.innerText = `Format: ${fmt.label} ▾`;
         sheetContainer.style.aspectRatio = `${fmt.wPt} / ${fmt.hPt}`;
 
-        // Proportionen der darauf liegenden Elemente an neues Blattverhältnis anpassen
         page.items.forEach(it => {
           it.h = it.w / (it.aspect * fmt.ratio);
         });
@@ -2176,7 +2187,6 @@
       renderSheetItems();
     };
 
-    // BUTTERWEICHES VERSCHIEBEN (STABILER POINTER-HANDLER)
     function setupItemInteractions(el, item) {
       let isDraggingItem = false;
       let startX = 0, startY = 0;
@@ -2232,7 +2242,6 @@
       el.addEventListener('pointerup', onPointerEnd);
       el.addEventListener('pointercancel', onPointerEnd);
 
-      // Skalieren über Handle
       const handle = el.querySelector('.resize-handle');
       if (handle && !item.locked) {
         let isResizing = false;
@@ -2282,6 +2291,7 @@
       }
     });
 
+    // Rendert die Seite sauber auf Canvas und erzeugt die Vorschau
     async function saveActivePagePreview() {
       const page = pagesData[activePageIndex];
       if (!page) return;
@@ -2292,23 +2302,30 @@
       cvs.height = Math.round(fmt.hPt * 2);
       const ctx = cvs.getContext('2d');
 
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#ffffff'; // Garantiert reinweiß
       ctx.fillRect(0, 0, cvs.width, cvs.height);
 
       for (const it of page.items) {
-        const img = new Image();
-        await new Promise(r => { img.onload = r; img.src = it.dataUrl; });
-        const rx = (it.x / 100) * cvs.width;
-        const ry = (it.y / 100) * cvs.height;
-        const rw = (it.w / 100) * cvs.width;
-        const rh = (it.h / 100) * cvs.height;
-        const rot = it.rotation || 0;
+        if (!it.dataUrl) continue;
+        await new Promise(r => {
+          const img = new Image();
+          img.onload = () => {
+            const rx = (it.x / 100) * cvs.width;
+            const ry = (it.y / 100) * cvs.height;
+            const rw = (it.w / 100) * cvs.width;
+            const rh = (it.h / 100) * cvs.height;
+            const rot = it.rotation || 0;
 
-        ctx.save();
-        ctx.translate(rx + rw / 2, ry + rh / 2);
-        ctx.rotate((rot * Math.PI) / 180);
-        ctx.drawImage(img, -rw / 2, -rh / 2, rw, rh);
-        ctx.restore();
+            ctx.save();
+            ctx.translate(rx + rw / 2, ry + rh / 2);
+            ctx.rotate((rot * Math.PI) / 180);
+            ctx.drawImage(img, -rw / 2, -rh / 2, rw, rh);
+            ctx.restore();
+            r();
+          };
+          img.onerror = () => r(); // Verhindert ewiges Hängen bei Ladefehlern
+          img.src = it.dataUrl;
+        });
       }
 
       page.previewUrl = cvs.toDataURL('image/jpeg', 0.88);
@@ -2387,7 +2404,7 @@
     };
 
     // ----------------------------------------------------
-    // 8. PDF-EXPORT
+    // 8. PDF-EXPORT (100% ZUVERLÄSSIG OHNE NETWORK-HANG)
     // ----------------------------------------------------
     btnOpenExportModal.addEventListener('click', () => {
       const now = new Date();
@@ -2425,6 +2442,18 @@
       });
     });
 
+    // Direkte Base64-zu-Byte Konvertierung (100% offline & sofortig)
+    function dataUrlToBytes(dataUrl) {
+      const base64 = dataUrl.split(',')[1];
+      const binary = atob(base64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
     btnStartExport.addEventListener('click', async () => {
       exportModal.style.display = 'none';
       btnOpenExportModal.disabled = true;
@@ -2445,18 +2474,57 @@
           const pW = fmt.wPt;
           const pH = fmt.hPt;
 
-          const img = new Image();
-          await new Promise(res => { img.onload = res; img.src = p.previewUrl; });
-
-          const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          // Direkte Canvas-Generierung für zuverlässiges Rendern
           const c = document.createElement('canvas');
-          c.width = Math.round(img.width * scale);
-          c.height = Math.round(img.height * scale);
+          const targetW = Math.min(maxDim, Math.round(pW * 2));
+          const targetH = Math.round(targetW * (pH / pW));
+          c.width = targetW;
+          c.height = targetH;
           const ctx = c.getContext('2d');
-          ctx.drawImage(img, 0, 0, c.width, c.height);
+
+          // Weißer Seitenhintergrund
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, targetW, targetH);
+
+          // Elemente zeichnen
+          if (p.items && p.items.length > 0) {
+            for (const it of p.items) {
+              if (!it.dataUrl) continue;
+              await new Promise(res => {
+                const img = new Image();
+                img.onload = () => {
+                  const rx = (it.x / 100) * targetW;
+                  const ry = (it.y / 100) * targetH;
+                  const rw = (it.w / 100) * targetW;
+                  const rh = (it.h / 100) * targetH;
+                  const rot = it.rotation || 0;
+
+                  ctx.save();
+                  ctx.translate(rx + rw / 2, ry + rh / 2);
+                  ctx.rotate((rot * Math.PI) / 180);
+                  ctx.drawImage(img, -rw / 2, -rh / 2, rw, rh);
+                  ctx.restore();
+                  res();
+                };
+                img.onerror = () => res(); // Kein Hängenbleiben!
+                img.src = it.dataUrl;
+              });
+            }
+          } else if (p.previewUrl) {
+            // Vollseite / Vorhandene Vorschau
+            await new Promise(res => {
+              const img = new Image();
+              img.onload = () => {
+                ctx.drawImage(img, 0, 0, targetW, targetH);
+                res();
+              };
+              img.onerror = () => res();
+              img.src = p.previewUrl;
+            });
+          }
 
           const compUrl = c.toDataURL('image/jpeg', quality);
-          const imgBytes = await fetch(compUrl).then(r => r.arrayBuffer());
+          const imgBytes = dataUrlToBytes(compUrl); // Synchrones Einlesen!
           const embeddedImage = await pdfDoc.embedJpg(imgBytes);
 
           const page = pdfDoc.addPage([pW, pH]);
@@ -2475,8 +2543,8 @@
         a.click();
         showToast(`"${cleanName}.pdf" heruntergeladen! 🎉`);
       } catch (err) {
-        console.error(err);
-        alert('Fehler beim Exportieren der PDF.');
+        console.error("PDF Export Fehler:", err);
+        alert('Fehler beim Exportieren der PDF: ' + err.message);
       } finally {
         btnOpenExportModal.innerHTML = origHtml;
         btnOpenExportModal.disabled = false;
