@@ -15,7 +15,7 @@
   <!-- Dynamisches Inline-Manifest -->
   <link rel="manifest" id="dynamicManifest" />
 
-  <!-- Lucide Icons, pdf-lib & SortableJS (100% lokal im Browser) -->
+  <!-- Bibliotheken (100% lokal im Browser) -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -47,7 +47,7 @@
     }
 
     header {
-      background: rgba(18, 24, 38, 0.92); backdrop-filter: blur(14px);
+      background: rgba(18, 24, 38, 0.94); backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--surface-border); position: sticky; top: 0; z-index: 40;
       padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
     }
@@ -71,7 +71,7 @@
 
     main {
       flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: 1rem;
-      padding-bottom: 6rem; touch-action: pan-y !important; /* Ermöglicht natürliches Scrollen */
+      padding-bottom: 6rem; touch-action: pan-y !important;
     }
 
     .env-notice {
@@ -88,7 +88,7 @@
     }
     .empty-state i { color: var(--primary); width: 44px; height: 44px; margin-bottom: 0.75rem; opacity: 0.85; }
 
-    /* Grid & Cards mit touch-action für unterbrechungsfreies Scrollen */
+    /* Grid & Cards: Touch-Action pan-y erlaubt butterweiches Scrollen */
     .pages-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem;
       touch-action: pan-y !important;
@@ -100,7 +100,7 @@
       touch-action: pan-y !important;
     }
     .page-card .thumb-wrapper {
-      position: relative; width: 100%; height: 240px; background: #ffffff; /* Weißer Standard */
+      position: relative; width: 100%; height: 240px; background: #ffffff;
       display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer;
       touch-action: pan-y !important;
     }
@@ -131,7 +131,7 @@
     .card-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
     .card-handle { cursor: grab; display: flex; align-items: center; gap: 0.2rem; color: var(--text-sub); font-size: 0.78rem; font-weight: 600; }
 
-    /* Mobile Bottom Bar (Aufgeräumt ohne den störenden Formate-Button) */
+    /* Aufgeräumte Mobile Bottom Bar */
     .mobile-bottom-bar {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 560px; background: rgba(18, 24, 38, 0.95);
@@ -145,7 +145,7 @@
     }
     .floating-shutter-trigger:active { transform: scale(0.92); }
 
-    /* Z-Index Ebenen */
+    /* Modale Ebenen */
     #layoutModal     { z-index: 100; }
     #scanEditorModal { z-index: 150; }
     #cameraModal     { z-index: 250 !important; }
@@ -269,11 +269,11 @@
       background: #ffffff !important; position: relative;
       max-width: 460px; max-height: calc(100vh - 140px); width: 100%;
       box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 4px; overflow: hidden;
-      touch-action: none;
+      touch-action: none; user-select: none;
     }
 
     .scan-item {
-      position: absolute; touch-action: none; user-select: none;
+      position: absolute; touch-action: none !important; user-select: none;
       cursor: grab; display: flex; align-items: center; justify-content: center;
     }
     .scan-item:active { cursor: grabbing; }
@@ -298,7 +298,7 @@
     .resize-handle {
       position: absolute; bottom: -10px; right: -10px; width: 34px; height: 34px;
       background: var(--primary); border: 2.5px solid #fff; border-radius: 50%;
-      cursor: nwse-resize; z-index: 25; touch-action: none;
+      cursor: nwse-resize; z-index: 25; touch-action: none !important;
       display: none; align-items: center; justify-content: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4); pointer-events: auto;
     }
@@ -337,7 +337,7 @@
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Build: 2026-10-09 21:26:15</span>
+        <span class="version-stamp">Build: 2026-10-09 21:33:19</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="PDF Speichern">
@@ -368,7 +368,7 @@
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
     </main>
 
-    <!-- Mobile Bottom Bar: Kamera in der Mitte, Galerie rechts -->
+    <!-- Bottom Bar -->
     <div class="mobile-bottom-bar">
       <div style="width: 80px;"></div>
 
@@ -561,7 +561,7 @@
     </div>
   </div>
 
-  <!-- Speicher-Dialog nach dem Filtern -->
+  <!-- Neuer Speicher-Dialog nach dem Filtern -->
   <div id="saveChoiceModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -710,7 +710,7 @@
     </div>
   </div>
 
-  <!-- Montage-Editor Modal (Reinweiß, butterweiches Verschieben & Drehen!) -->
+  <!-- Montage-Editor Modal -->
   <div id="layoutModal" class="modal-fullscreen">
     <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem; flex-wrap: wrap;">
       <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
@@ -781,22 +781,11 @@
   </div>
 
   <script>
-    lucide.createIcons();
-
-    // Dynamisches Manifest generieren
-    const pwaIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="128" fill="#121826"/><path d="M128 160h256v192H128z" fill="none" stroke="#3b82f6" stroke-width="32" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#3b82f6"/></svg>`;
-    const pwaIconUrl = "data:image/svg+xml;base64," + btoa(pwaIconSvg);
-    const pwaManifest = {
-      name: "SmartScan Pro",
-      short_name: "SmartScan",
-      start_url: window.location.href,
-      display: "standalone",
-      background_color: "#090d16",
-      theme_color: "#121826",
-      icons: [{ src: pwaIconUrl, sizes: "512x512", type: "image/svg+xml" }]
-    };
-    const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: "application/manifest+json" });
-    document.getElementById("dynamicManifest").setAttribute("href", URL.createObjectURL(manifestBlob));
+    // Sichere Lucide Initialisierung
+    function safeRenderIcons() {
+      try { if (window.lucide) lucide.createIcons(); } catch(e){}
+    }
+    safeRenderIcons();
 
     // Reale Maße in PDF-Punkten (72 DPI) - Nur echte Papierformate!
     const FORMAT_PRESETS = {
@@ -809,10 +798,7 @@
       free:   { label: 'Frei',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
     };
 
-    const A4_RENDER_W = 1240;
-    const A4_RENDER_H = 1754;
-
-    // State (100% im RAM)
+    // State (100% lokal im Browser-RAM)
     let pagesData = [];
     let activePageIndex = null;
     let targetPageForNewScan = null;
@@ -823,12 +809,12 @@
     let activeCropFormat = 'a4';
     let activeVfFormat = 'a4';
 
-    let warpedCanvas = document.createElement('canvas');
-    let warpedOriginalData = null;
+    let croppedImageCanvas = document.createElement('canvas');
 
+    // Standard ist IMMER 'original'
     let activeFilter = 'original';
     let filterParams = { bleach: 70, glare: 60, ink: 40, contrast: 15 };
-    let corners = { tl: {x:0, y:0}, tr: {x:1, y:0}, br: {x:1, y:1}, bl: {x:0, y:1} };
+    let corners = { tl: {x:0.08, y:0.08}, tr: {x:0.92, y:0.08}, br: {x:0.92, y:0.92}, bl: {x:0.08, y:0.92} };
     let exportPreset = 'medium';
 
     // DOM Elements
@@ -876,6 +862,7 @@
 
     const blankFormatModal = document.getElementById('blankFormatModal');
     const btnOpenNewBlankModal = document.getElementById('btnOpenNewBlankModal');
+    const btnOpenNewBlankModalBottom = document.getElementById('btnOpenNewBlankModalBottom');
     const btnCloseBlankModal = document.getElementById('btnCloseBlankModal');
     const btnCreateBlankSheet = document.getElementById('btnCreateBlankSheet');
 
@@ -929,15 +916,15 @@
     const isLocalFileContext = window.location.protocol === 'file:';
     if (isLocalFileContext) {
       document.getElementById('envNotice').style.display = 'flex';
-      lucide.createIcons();
+      safeRenderIcons();
     }
 
-    // SortableJS mit Touch-Verzögerung für flüssiges Scrollen auf dem Smartphone
+    // SortableJS mit Touch-Verzögerung für flüssiges Scrollen
     new Sortable(pagesGrid, {
       animation: 200,
       handle: '.card-handle',
-      touchStartThreshold: 10,
-      delay: 150,
+      touchStartThreshold: 8,
+      delay: 200,
       delayOnTouchOnly: true,
       onEnd: (evt) => {
         const item = pagesData.splice(evt.oldIndex, 1)[0];
@@ -961,16 +948,21 @@
       const newPage = {
         id: 'page_' + Date.now(),
         formatKey: fmtKey || 'a4',
-        previewUrl: cvs.toDataURL('image/jpeg', 0.88),
+        previewUrl: cvs.toDataURL('image/jpeg', 0.90),
         items: []
       };
       pagesData.push(newPage);
+      refreshPagesUI(); // Sofort in der Dokumentenliste sichtbar!
       openLayoutEditor(pagesData.length - 1);
       showToast(`Weiße ${fmt.label}-Seite erstellt`);
     }
 
-    btnOpenNewBlankModal.addEventListener('click', () => {
-      blankFormatModal.style.display = 'flex';
+    [btnOpenNewBlankModal, btnOpenNewBlankModalBottom].forEach(btn => {
+      if (btn) {
+        btn.addEventListener('click', () => {
+          blankFormatModal.style.display = 'flex';
+        });
+      }
     });
 
     btnCloseBlankModal.addEventListener('click', () => {
@@ -1140,7 +1132,7 @@
         torchState = !torchState;
         await track.applyConstraints({ advanced: [{ torch: torchState }] });
         torchIcon.setAttribute('data-lucide', torchState ? 'zap' : 'zap-off');
-        lucide.createIcons();
+        safeRenderIcons();
       } catch (e) { console.error(e); }
     });
 
@@ -1279,7 +1271,8 @@
         cropControlsPanel.style.display = 'none';
         filterControlsPanel.style.display = 'flex';
 
-        warpScannedDocument(currentRawImage, corners);
+        // 100% UNVERZERRTER ECHTER RECHTECK-ZUSCHNITT!
+        executeUnwarpedCrop(currentRawImage, corners);
         renderPerfectionFilter();
       }
     }
@@ -1344,12 +1337,13 @@
 
       corners = {
         tl: { x: Math.max(0.02, Math.min(0.98 - boxW, cx - halfW)), y: Math.max(0.02, Math.min(0.98 - boxH, cy - halfH)) },
-        tr: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.max(0.02, min098 = cy - halfH) },
+        tr: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.max(0.02, Math.min(0.98 - boxH, cy - halfH)) },
         br: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.min(0.98, Math.max(0.02 + boxH, cy + halfH)) },
         bl: { x: Math.max(0.02, Math.min(0.98 - boxW, cx - halfW)), y: Math.min(0.98, Math.max(0.02 + boxH, cy + halfH)) }
       };
     }
 
+    // 90° Drehung im Zuschnitt
     btnRotateSource.addEventListener('click', async () => {
       const rotCanvas = document.createElement('canvas');
       rotCanvas.width = currentRawImage.height;
@@ -1423,7 +1417,7 @@
       });
     }
 
-    // Smarte Lupe
+    // Smarte Lupe: wandert automatisch in die jeweils freie Ecke
     function updateLoupe(normX, normY, clientX, clientY) {
       if (!currentRawImage) return;
 
@@ -1485,7 +1479,7 @@
       return inside;
     }
 
-    // Verschieben des Rahmens
+    // Rahmen als Ganzes verschieben
     let isMovingEntireBox = false;
     let boxMoveStart = { x: 0, y: 0 };
     let initialCornersState = null;
@@ -1538,6 +1532,7 @@
       }
     });
 
+    // Ecken anfassen mit Lupe
     Object.keys(handles).forEach(key => {
       const handle = handles[key];
       let isDragging = false;
@@ -1584,91 +1579,24 @@
     });
 
     // ----------------------------------------------------
-    // 4. PERSPEKTIVISCHER WARP (OHNE VERZERRUNG)
+    // 4. ECHTER ZUSCHNITT OHNE JEDE VERZERRUNG
     // ----------------------------------------------------
-    function getPerspectiveTransform(src, dst) {
-      let a = [], b = [];
-      for (let i = 0; i < 4; i++) {
-        a.push([src[i].x, src[i].y, 1, 0, 0, 0, -src[i].x * dst[i].x, -src[i].y * dst[i].x]);
-        b.push(dst[i].x);
-        a.push([0, 0, 0, src[i].x, src[i].y, 1, -src[i].x * dst[i].y, -src[i].y * dst[i].y]);
-        b.push(dst[i].y);
-      }
-      return solveLinearSystem(a, b);
-    }
+    function executeUnwarpedCrop(sourceImg, srcCorners) {
+      // Ermittle die genaue Hüllkurve der Markierung im Originalbild
+      const minX = Math.round(Math.min(srcCorners.tl.x, srcCorners.bl.x, srcCorners.tr.x, srcCorners.br.x) * sourceImg.width);
+      const maxX = Math.round(Math.max(srcCorners.tl.x, srcCorners.bl.x, srcCorners.tr.x, srcCorners.br.x) * sourceImg.width);
+      const minY = Math.round(Math.min(srcCorners.tl.y, srcCorners.tr.y, srcCorners.bl.y, srcCorners.br.y) * sourceImg.height);
+      const maxY = Math.round(Math.max(srcCorners.tl.y, srcCorners.bl.y, srcCorners.tr.y, srcCorners.br.y) * sourceImg.height);
 
-    function solveLinearSystem(A, B) {
-      let n = B.length;
-      for (let i = 0; i < n; i++) {
-        let maxRow = i;
-        for (let k = i + 1; k < n; k++) if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
-        [A[i], A[maxRow]] = [A[maxRow], A[i]];
-        [B[i], B[maxRow]] = [B[maxRow], B[i]];
-        for (let k = i + 1; k < n; k++) {
-          let f = A[k][i] / A[i][i];
-          for (let j = i; j < n; j++) A[k][j] -= f * A[i][j];
-          B[k] -= f * B[i];
-        }
-      }
-      let x = new Array(n).fill(0);
-      for (let i = n - 1; i >= 0; i--) {
-        let sum = B[i];
-        for (let j = i + 1; j < n; j++) sum -= A[i][j] * x[j];
-        x[i] = sum / A[i][i];
-      }
-      return [...x, 1];
-    }
+      const cropW = Math.max(20, maxX - minX);
+      const cropH = Math.max(20, maxY - minY);
 
-    function warpScannedDocument(sourceImg, srcCorners) {
-      const pTL = { x: srcCorners.tl.x * sourceImg.width, y: srcCorners.tl.y * sourceImg.height };
-      const pTR = { x: srcCorners.tr.x * sourceImg.width, y: srcCorners.tr.y * sourceImg.height };
-      const pBR = { x: srcCorners.br.x * sourceImg.width, y: srcCorners.br.y * sourceImg.height };
-      const pBL = { x: srcCorners.bl.x * sourceImg.width, y: srcCorners.bl.y * sourceImg.height };
+      croppedImageCanvas.width = cropW;
+      croppedImageCanvas.height = cropH;
+      const ctx = croppedImageCanvas.getContext('2d');
 
-      const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-
-      const outWidth = Math.round(Math.max(dist(pTL, pTR), dist(pBL, pBR)));
-      const outHeight = Math.round(Math.max(dist(pTL, pBL), dist(pTR, pBR)));
-
-      const srcCanvas = document.createElement('canvas');
-      srcCanvas.width = sourceImg.width; srcCanvas.height = sourceImg.height;
-      const sCtx = srcCanvas.getContext('2d');
-      sCtx.drawImage(sourceImg, 0, 0);
-      const srcData = sCtx.getImageData(0, 0, sourceImg.width, sourceImg.height);
-
-      warpedCanvas.width = outWidth; warpedCanvas.height = outHeight;
-      const dCtx = warpedCanvas.getContext('2d');
-      const dstData = dCtx.createImageData(outWidth, outHeight);
-
-      const srcPts = [pTL, pTR, pBR, pBL];
-      const dstPts = [{ x: 0, y: 0 }, { x: outWidth, y: 0 }, { x: outWidth, y: outHeight }, { x: 0, y: outHeight }];
-
-      const H = getPerspectiveTransform(dstPts, srcPts);
-      const dPixels = dstData.data;
-      const sPixels = srcData.data;
-      const sW = srcCanvas.width;
-      const sH = srcCanvas.height;
-
-      let idx = 0;
-      for (let y = 0; y < outHeight; y++) {
-        for (let x = 0; x < outWidth; x++) {
-          const denom = H[6] * x + H[7] * y + H[8];
-          const srcX = Math.floor((H[0] * x + H[1] * y + H[2]) / denom);
-          const srcY = Math.floor((H[3] * x + H[4] * y + H[5]) / denom);
-
-          if (srcX >= 0 && srcX < sW && srcY >= 0 && srcY < sH) {
-            const sIdx = (srcY * sW + srcX) * 4;
-            dPixels[idx] = sPixels[sIdx];
-            dPixels[idx + 1] = sPixels[sIdx + 1];
-            dPixels[idx + 2] = sPixels[sIdx + 2];
-            dPixels[idx + 3] = 255;
-          }
-          idx += 4;
-        }
-      }
-
-      dCtx.putImageData(dstData, 0, 0);
-      warpedOriginalData = dCtx.getImageData(0, 0, outWidth, outHeight);
+      // EXAKTER ZUSCHNITT DIREKT AUS DEM ORIGINAL -> 100% NULL VERZERRUNG
+      ctx.drawImage(sourceImg, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
     }
 
     document.querySelectorAll('.filter-card').forEach(card => {
@@ -1701,27 +1629,30 @@
       });
     });
 
+    // Saubere Filter-Pipeline (Original als sicherer Standard)
     function renderPerfectionFilter() {
-      if (!warpedOriginalData) return;
+      const w = croppedImageCanvas.width;
+      const h = croppedImageCanvas.height;
+      if (!w || !h) return;
 
-      const w = warpedCanvas.width;
-      const h = warpedCanvas.height;
-      canvasFilterPreview.width = w; canvasFilterPreview.height = h;
+      canvasFilterPreview.width = w;
+      canvasFilterPreview.height = h;
 
       const ctx = canvasFilterPreview.getContext('2d');
-      const outData = ctx.createImageData(w, h);
-      const src = warpedOriginalData.data;
-      const dst = outData.data;
-      const len = src.length;
 
       // 100% UNVERÄNDERTES ORIGINAL
       if (activeFilter === 'original') {
-        for (let i = 0; i < len; i++) dst[i] = src[i];
-        ctx.putImageData(outData, 0, 0);
+        ctx.drawImage(croppedImageCanvas, 0, 0);
         return;
       }
 
-      // SAUVOLA S/W
+      const imgData = croppedImageCanvas.getContext('2d').getImageData(0, 0, w, h);
+      const src = imgData.data;
+      const outData = ctx.createImageData(w, h);
+      const dst = outData.data;
+      const len = src.length;
+
+      // SAUVOLA S/W (Text-Dokument)
       if (activeFilter === 'bw') {
         const gray = new Uint8Array(w * h);
         for (let i = 0, j = 0; i < len; i += 4, j++) {
@@ -1790,7 +1721,7 @@
       const bgSmall = document.createElement('canvas');
       bgSmall.width = 36; bgSmall.height = Math.round(36 * (h / w));
       const bgCtx = bgSmall.getContext('2d');
-      bgCtx.drawImage(warpedCanvas, 0, 0, bgSmall.width, bgSmall.height);
+      bgCtx.drawImage(croppedImageCanvas, 0, 0, bgSmall.width, bgSmall.height);
 
       const bgFull = document.createElement('canvas');
       bgFull.width = w; bgFull.height = h;
@@ -1877,7 +1808,7 @@
     });
 
     // ----------------------------------------------------
-    // 5. SPEICHER-DIALOG (3 EINDEUTIGE PFADE)
+    // 5. SPEICHERN: DIREKT & ZUVERLÄSSIG
     // ----------------------------------------------------
     let pendingScanDataUrl = null;
     let pendingScanAspect = 1;
@@ -1895,6 +1826,7 @@
       }
 
       saveChoiceModal.style.display = 'flex';
+      safeRenderIcons();
     });
 
     btnCloseSaveChoiceModal.addEventListener('click', () => {
@@ -1930,6 +1862,7 @@
       saveChoiceModal.style.display = 'none';
       scanEditorModal.style.display = 'none';
       pickTargetSheetModal.style.display = 'flex';
+      safeRenderIcons();
     });
 
     // 3. Auf existierender Seite
@@ -1950,6 +1883,7 @@
       });
 
       existingPagePickerModal.style.display = 'flex';
+      safeRenderIcons();
     });
 
     btnCloseExistingPickerModal.addEventListener('click', () => {
@@ -1991,12 +1925,13 @@
       const newPage = {
         id: 'page_' + Date.now(),
         formatKey: selectedPlacementFormat,
-        previewUrl: cvs.toDataURL('image/jpeg', 0.88),
+        previewUrl: cvs.toDataURL('image/jpeg', 0.90),
         items: []
       };
       pagesData.push(newPage);
       const newIdx = pagesData.length - 1;
       addItemToPage(newIdx, pendingScanDataUrl, pendingScanAspect);
+      refreshPagesUI();
       openLayoutEditor(newIdx);
     });
 
@@ -2027,7 +1962,7 @@
     }
 
     // ----------------------------------------------------
-    // 6. MONTAGE-EDITOR
+    // 6. MONTAGE-EDITOR (BUTTERWEICHER TOUCH-DRAG)
     // ----------------------------------------------------
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
@@ -2040,6 +1975,7 @@
 
       sheetContainer.style.aspectRatio = `${fmt.wPt} / ${fmt.hPt}`;
       renderSheetItems();
+      safeRenderIcons();
     }
 
     btnOpenChangeFormatModal.addEventListener('click', () => {
@@ -2048,6 +1984,7 @@
         card.classList.toggle('active', card.dataset.cfmt === page.formatKey);
       });
       changeSheetFormatModal.style.display = 'flex';
+      safeRenderIcons();
     });
 
     btnCloseChangeFormatModal.addEventListener('click', () => {
@@ -2137,7 +2074,7 @@
         sheetContainer.appendChild(itemEl);
       });
 
-      lucide.createIcons();
+      safeRenderIcons();
     }
 
     window.rotateItemOnSheet = function(itemId, e) {
@@ -2187,6 +2124,7 @@
       renderSheetItems();
     };
 
+    // STABILES VERSCHIEBEN MIT NATIVEM POINTER-CAPTURE
     function setupItemInteractions(el, item) {
       let isDraggingItem = false;
       let startX = 0, startY = 0;
@@ -2291,7 +2229,6 @@
       }
     });
 
-    // Rendert die Seite sauber auf Canvas und erzeugt die Vorschau
     async function saveActivePagePreview() {
       const page = pagesData[activePageIndex];
       if (!page) return;
@@ -2323,12 +2260,12 @@
             ctx.restore();
             r();
           };
-          img.onerror = () => r(); // Verhindert ewiges Hängen bei Ladefehlern
+          img.onerror = () => r();
           img.src = it.dataUrl;
         });
       }
 
-      page.previewUrl = cvs.toDataURL('image/jpeg', 0.88);
+      page.previewUrl = cvs.toDataURL('image/jpeg', 0.90);
     }
 
     // ----------------------------------------------------
@@ -2340,6 +2277,7 @@
         emptyView.style.display = 'flex';
         pagesGrid.style.display = 'none';
         btnOpenExportModal.disabled = true;
+        safeRenderIcons();
         return;
       }
 
@@ -2379,7 +2317,7 @@
         `;
         pagesGrid.appendChild(card);
       });
-      lucide.createIcons();
+      safeRenderIcons();
     }
 
     window.movePage = function(index, direction) {
@@ -2404,7 +2342,7 @@
     };
 
     // ----------------------------------------------------
-    // 8. PDF-EXPORT (100% ZUVERLÄSSIG OHNE NETWORK-HANG)
+    // 8. PDF-EXPORT (100% ZUVERLÄSSIG)
     // ----------------------------------------------------
     btnOpenExportModal.addEventListener('click', () => {
       const now = new Date();
@@ -2442,7 +2380,7 @@
       });
     });
 
-    // Direkte Base64-zu-Byte Konvertierung (100% offline & sofortig)
+    // Synchroner Byte-Konverter
     function dataUrlToBytes(dataUrl) {
       const base64 = dataUrl.split(',')[1];
       const binary = atob(base64);
@@ -2459,7 +2397,7 @@
       btnOpenExportModal.disabled = true;
       const origHtml = btnOpenExportModal.innerHTML;
       btnOpenExportModal.innerHTML = `<i data-lucide="loader-2"></i>`;
-      lucide.createIcons();
+      safeRenderIcons();
 
       try {
         const pdfDoc = await PDFLib.PDFDocument.create();
@@ -2474,7 +2412,6 @@
           const pW = fmt.wPt;
           const pH = fmt.hPt;
 
-          // Direkte Canvas-Generierung für zuverlässiges Rendern
           const c = document.createElement('canvas');
           const targetW = Math.min(maxDim, Math.round(pW * 2));
           const targetH = Math.round(targetW * (pH / pW));
@@ -2482,11 +2419,10 @@
           c.height = targetH;
           const ctx = c.getContext('2d');
 
-          // Weißer Seitenhintergrund
+          // Reinweißer Seitenhintergrund
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, targetW, targetH);
 
-          // Elemente zeichnen
           if (p.items && p.items.length > 0) {
             for (const it of p.items) {
               if (!it.dataUrl) continue;
@@ -2506,12 +2442,11 @@
                   ctx.restore();
                   res();
                 };
-                img.onerror = () => res(); // Kein Hängenbleiben!
+                img.onerror = () => res();
                 img.src = it.dataUrl;
               });
             }
           } else if (p.previewUrl) {
-            // Vollseite / Vorhandene Vorschau
             await new Promise(res => {
               const img = new Image();
               img.onload = () => {
@@ -2524,7 +2459,7 @@
           }
 
           const compUrl = c.toDataURL('image/jpeg', quality);
-          const imgBytes = dataUrlToBytes(compUrl); // Synchrones Einlesen!
+          const imgBytes = dataUrlToBytes(compUrl);
           const embeddedImage = await pdfDoc.embedJpg(imgBytes);
 
           const page = pdfDoc.addPage([pW, pH]);
@@ -2548,7 +2483,7 @@
       } finally {
         btnOpenExportModal.innerHTML = origHtml;
         btnOpenExportModal.disabled = false;
-        lucide.createIcons();
+        safeRenderIcons();
       }
     });
 
