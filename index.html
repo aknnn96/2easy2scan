@@ -100,11 +100,11 @@
       background: var(--surface); border: 1px solid var(--surface-border);
       border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
       box-shadow: 0 4px 14px rgba(0,0,0,0.3); position: relative;
-      touch-action: pan-y !important;
+      touch-action: pan-y !important; cursor: pointer;
     }
     .page-card .thumb-wrapper {
       position: relative; width: 100%; height: 240px; background: #ffffff;
-      display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
       touch-action: pan-y !important;
     }
     .page-card img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
@@ -230,7 +230,7 @@
       transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none;
     }
 
-    /* Smarte Lupe: Stabil oben, wechselt lateral links/rechts */
+    /* Smarte Lupe */
     .crop-loupe {
       position: fixed; width: 130px; height: 130px; border-radius: 50%;
       border: 3.5px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.9);
@@ -262,7 +262,7 @@
     .slider-header { display: flex; justify-content: space-between; color: var(--text-sub); font-weight: 500; }
     .slider-item input[type=range] { accent-color: var(--primary); width: 100%; cursor: pointer; }
 
-    /* Montage Editor */
+    /* Montage/Bearbeiten Editor */
     #layoutModal { background: #050811; }
     .layout-stage {
       flex: 1; display: flex; align-items: center; justify-content: center;
@@ -340,10 +340,11 @@
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Build: 2026-10-09 21:39:50</span>
+        <span class="version-stamp">Build: 2026-10-09 21:46:10</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
-        <button class="btn btn-danger btn-icon" id="btnClearAllStorage" title="Alles löschen & Cache leeren">
+        <!-- Mülleimer-Button zum selektiven Leeren von Speicher & Cache -->
+        <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Speicher & Cache verwalten">
           <i data-lucide="trash-2"></i>
         </button>
         <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="PDF Speichern">
@@ -374,9 +375,8 @@
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
     </main>
 
-    <!-- Aufgeräumte Mobile Bottom Bar -->
+    <!-- Mobile Bottom Bar -->
     <div class="mobile-bottom-bar">
-      <!-- App / Offline Info Button links neben der Kamera -->
       <button class="btn btn-secondary" id="btnPwaInfo" style="padding: 0.45rem 0.75rem;" title="App installieren & Offline-Info">
         <i data-lucide="smartphone"></i>
         <span>App / Offline</span>
@@ -395,6 +395,52 @@
     </div>
   </div>
 
+  <!-- Dialog: Speicher & Cache selektiv leeren -->
+  <div id="clearStorageModal" class="modal-dialog">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; display:flex; align-items:center; gap:0.4rem;">
+          <i data-lucide="trash-2" style="color:var(--danger); width:18px;"></i>
+          Speicher & Cache verwalten
+        </h3>
+        <button class="btn btn-secondary btn-icon" id="btnCloseClearModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
+      </div>
+
+      <p style="font-size: 0.78rem; color: var(--text-sub); line-height: 1.4;">
+        Wähle aus, welche Daten aus dem lokalen Browser-Speicher entfernt werden sollen:
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 0.55rem;">
+        <!-- Option 1: Nur Dokumente -->
+        <div class="save-choice-card" id="btnDeleteOnlyDocs">
+          <i data-lucide="layers" style="width:20px; height:20px; color:var(--warning);"></i>
+          <div>
+            <div style="font-weight:700; font-size:0.85rem; color:#fff;">Gespeicherte Scans & Dokumente löschen</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">Löscht alle erstellten Seiten aus der internen Datenbank</div>
+          </div>
+        </div>
+
+        <!-- Option 2: Nur Offline-Cache -->
+        <div class="save-choice-card" id="btnDeleteOnlyCache">
+          <i data-lucide="smartphone" style="width:20px; height:20px; color:var(--primary);"></i>
+          <div>
+            <div style="font-weight:700; font-size:0.85rem; color:#fff;">Offline-App-Cache & PWA leeren</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">Setzt PWA-Dateien zurück. Dokumente bleiben erhalten.</div>
+          </div>
+        </div>
+
+        <!-- Option 3: Alles restlos löschen -->
+        <div class="save-choice-card" id="btnDeleteEverything" style="border-color: rgba(239,68,68,0.4);">
+          <i data-lucide="trash-2" style="width:20px; height:20px; color:var(--danger);"></i>
+          <div>
+            <div style="font-weight:700; font-size:0.85rem; color:#f87171;">Alles restlos löschen</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">Löscht Dokumente, Cache und alle Einstellungen vollständig</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- PWA & Offline Info Modal -->
   <div id="pwaInfoModal" class="modal-dialog">
     <div class="modal-content">
@@ -409,9 +455,9 @@
       <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.45; display: flex; flex-direction: column; gap: 0.75rem;">
         <div style="background:#0b1120; padding:0.75rem; border-radius:10px; border:1px solid var(--surface-border);">
           <strong style="color:var(--text-main); display:block; margin-bottom:0.25rem;">📱 Als echte App installieren:</strong>
-          <span id="pwaInstallInstructions">
-            <strong>Chrome / Android:</strong> Tippe im Browser-Menü (3 Punkte oben rechts) auf <em>„App installieren“</em> oder <em>„Zum Startbildschirm hinzufügen“</em>.<br><br>
-            <strong>iOS / Safari:</strong> Tippe unten auf das <em>Teilen-Symbol</em> und wähle <em>„Zum Home-Bildschirm“</em>.
+          <span>
+            <strong>Chrome / Android:</strong> Im Browser-Menü (3 Punkte oben rechts) auf <em>„App installieren“</em> oder <em>„Zum Startbildschirm hinzufügen“</em> tippen.<br><br>
+            <strong>iOS / Safari:</strong> Unten auf das <em>Teilen-Symbol</em> tippen und <em>„Zum Home-Bildschirm“</em> wählen.
           </span>
         </div>
 
@@ -421,9 +467,9 @@
 
         <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 0.75rem; font-size: 0.78rem; color: #fbbf24;">
           <strong>💾 Lokaler Speicher & Offline-Hinweis:</strong><br>
-          Alle Seiten werden automatisch im lokalen Browser-Speicher (IndexedDB) gespeichert und bleiben auch beim Neuladen erhalten. 
+          Alle Seiten werden automatisch im lokalen Browser-Speicher (IndexedDB) gesichert. 
           <br><br>
-          <strong>Wichtig:</strong> Wenn du den Browser-Cache / Websitedaten löschst (z. B. über „Alles löschen“), werden alle gespeicherten Dokumente entfernt!
+          <strong>Wichtig:</strong> Wenn du den Browser-Cache / Websitedaten löschst (z. B. über den Mülleimer oben), werden die Dokumente entfernt.
         </div>
       </div>
     </div>
@@ -606,7 +652,7 @@
     </div>
   </div>
 
-  <!-- Neuer Speicher-Dialog nach dem Filtern -->
+  <!-- Speicher-Dialog nach dem Filtern -->
   <div id="saveChoiceModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -652,22 +698,10 @@
 
       <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <div class="formats-grid" id="pickNewSheetFormatsGrid">
-          <div class="format-card active" data-pfmt="a4">
-            <div class="f-title">📄 DIN A4</div>
-            <div class="f-desc">Standard</div>
-          </div>
-          <div class="format-card" data-pfmt="a5">
-            <div class="f-title">📝 DIN A5</div>
-            <div class="f-desc">Kompakt</div>
-          </div>
-          <div class="format-card" data-pfmt="a3">
-            <div class="f-title">📐 DIN A3</div>
-            <div class="f-desc">Großformat</div>
-          </div>
-          <div class="format-card" data-pfmt="a6">
-            <div class="f-title">🏷️ DIN A6</div>
-            <div class="f-desc">Postkarte</div>
-          </div>
+          <div class="format-card active" data-pfmt="a4"><div class="f-title">📄 DIN A4</div><div class="f-desc">Standard</div></div>
+          <div class="format-card" data-pfmt="a5"><div class="f-title">📝 DIN A5</div><div class="f-desc">Kompakt</div></div>
+          <div class="format-card" data-pfmt="a3"><div class="f-title">📐 DIN A3</div><div class="f-desc">Großformat</div></div>
+          <div class="format-card" data-pfmt="a6"><div class="f-title">🏷️ DIN A6</div><div class="f-desc">Postkarte</div></div>
         </div>
 
         <button class="btn btn-secondary" id="btnTargetNewCustomSheet" style="justify-content: center; padding: 0.65rem 1rem;">
@@ -695,7 +729,7 @@
     </div>
   </div>
 
-  <!-- Format nachträglich ändern Modal (Für Montage-Editor) -->
+  <!-- Format nachträglich ändern Modal (Für Bearbeiten-Editor) -->
   <div id="changeSheetFormatModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -723,30 +757,12 @@
       </div>
 
       <div class="formats-grid">
-        <div class="format-card active" data-fmt="a4">
-          <div class="f-title">📄 DIN A4</div>
-          <div class="f-desc">210 × 297 mm (Standard)</div>
-        </div>
-        <div class="format-card" data-fmt="a5">
-          <div class="f-title">📝 DIN A5</div>
-          <div class="f-desc">148 × 210 mm (Kompakt)</div>
-        </div>
-        <div class="format-card" data-fmt="a3">
-          <div class="f-title">📐 DIN A3</div>
-          <div class="f-desc">297 × 420 mm (Großformat)</div>
-        </div>
-        <div class="format-card" data-fmt="a6">
-          <div class="f-title">🏷️ DIN A6</div>
-          <div class="f-desc">105 × 148 mm (Postkarte)</div>
-        </div>
-        <div class="format-card" data-fmt="letter">
-          <div class="f-title">📜 US Letter</div>
-          <div class="f-desc">216 × 279 mm (US Standard)</div>
-        </div>
-        <div class="format-card" data-fmt="legal">
-          <div class="f-title">⚖️ US Legal</div>
-          <div class="f-desc">216 × 356 mm (Verträge)</div>
-        </div>
+        <div class="format-card active" data-fmt="a4"><div class="f-title">📄 DIN A4</div><div class="f-desc">210 × 297 mm (Standard)</div></div>
+        <div class="format-card" data-fmt="a5"><div class="f-title">📝 DIN A5</div><div class="f-desc">148 × 210 mm (Kompakt)</div></div>
+        <div class="format-card" data-fmt="a3"><div class="f-title">📐 DIN A3</div><div class="f-desc">297 × 420 mm (Großformat)</div></div>
+        <div class="format-card" data-fmt="a6"><div class="f-title">🏷️ DIN A6</div><div class="f-desc">105 × 148 mm (Postkarte)</div></div>
+        <div class="format-card" data-fmt="letter"><div class="f-title">📜 US Letter</div><div class="f-desc">216 × 279 mm (US Standard)</div></div>
+        <div class="format-card" data-fmt="legal"><div class="f-title">⚖️ US Legal</div><div class="f-desc">216 × 356 mm (Verträge)</div></div>
       </div>
 
       <button class="btn" id="btnCreateBlankSheet" style="justify-content: center; padding: 0.7rem;">
@@ -755,7 +771,7 @@
     </div>
   </div>
 
-  <!-- Montage-Editor Modal -->
+  <!-- Bearbeiten-Editor Modal (Reinweiß, butterweiches Verschieben & Drehen) -->
   <div id="layoutModal" class="modal-fullscreen">
     <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem; flex-wrap: wrap;">
       <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
@@ -767,7 +783,7 @@
 
       <button class="btn" id="btnScanAnotherOntoPage" style="background: var(--accent); padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="plus-circle" style="width:13px;"></i>
-        <span>Scan ergänzen</span>
+        <span>Scan auf Seite ergänzen</span>
       </button>
 
       <button class="btn" id="btnSaveLayoutPage" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
@@ -826,13 +842,12 @@
   </div>
 
   <script>
-    // Sichere Lucide Initialisierung
     function safeRenderIcons() {
       try { if (window.lucide) lucide.createIcons(); } catch(e){}
     }
     safeRenderIcons();
 
-    // Reale Maße in PDF-Punkten (72 DPI) - Nur echte Papierformate!
+    // Reale Maße in PDF-Punkten (72 DPI) - Ausschließlich echte Papierformate!
     const FORMAT_PRESETS = {
       a4:     { label: 'DIN A4',    wPt: 595.28, hPt: 841.89, ratio: 841.89 / 595.28 },
       a5:     { label: 'DIN A5',    wPt: 419.53, hPt: 595.28, ratio: 595.28 / 419.53 },
@@ -842,6 +857,9 @@
       legal:  { label: 'US Legal',  wPt: 612.00, hPt: 1008.00, ratio: 1008.00 / 612.00 },
       free:   { label: 'Frei',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
     };
+
+    const A4_RENDER_W = 1240;
+    const A4_RENDER_H = 1754;
 
     // ====================================================
     // LOKALE INDEXED-DB PERSISTENZ (Dauerhafter Speicher)
@@ -899,14 +917,29 @@
       }
     }
 
-    // Beim Starten sofort gespeicherte Seiten laden!
     window.addEventListener('DOMContentLoaded', () => {
       loadPagesFromStorage();
     });
 
-    // Button: Alles löschen & Cache leeren
-    document.getElementById('btnClearAllStorage').addEventListener('click', async () => {
-      if (confirm('Möchtest du wirklich alle gespeicherten Dokumente und den lokalen Speicher leeren? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    // ====================================================
+    // SPEICHER- & CACHE-VERWALTUNG (3 LÖSCH-OPTIONEN)
+    // ====================================================
+    const clearStorageModal = document.getElementById('clearStorageModal');
+    const btnOpenClearStorageModal = document.getElementById('btnOpenClearStorageModal');
+    const btnCloseClearModal = document.getElementById('btnCloseClearModal');
+
+    btnOpenClearStorageModal.addEventListener('click', () => {
+      clearStorageModal.style.display = 'flex';
+      safeRenderIcons();
+    });
+
+    btnCloseClearModal.addEventListener('click', () => {
+      clearStorageModal.style.display = 'none';
+    });
+
+    // 1. Nur Scans & Dokumente löschen
+    document.getElementById('btnDeleteOnlyDocs').addEventListener('click', async () => {
+      if (confirm('Möchtest du alle gespeicherten Dokumente und Scans löschen?')) {
         pagesData = [];
         try {
           const db = await openDatabase();
@@ -914,7 +947,49 @@
           tx.objectStore(STORE_NAME).clear();
         } catch(e){}
         refreshPagesUI();
-        showToast('Speicher vollständig geleert');
+        clearStorageModal.style.display = 'none';
+        showToast('Dokumente gelöscht');
+      }
+    });
+
+    // 2. Nur Offline-Cache & PWA leeren
+    document.getElementById('btnDeleteOnlyCache').addEventListener('click', async () => {
+      if (confirm('Möchtest du den Offline-Cache und PWA-Daten leeren?')) {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) { await caches.delete(k); }
+        }
+        if (navigator.serviceWorker) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) { await r.unregister(); }
+        }
+        clearStorageModal.style.display = 'none';
+        showToast('Offline-Cache geleert');
+      }
+    });
+
+    // 3. Alles restlos löschen
+    document.getElementById('btnDeleteEverything').addEventListener('click', async () => {
+      if (confirm('Möchtest du wirklich alle Dokumente, den Offline-Cache und alle Websitedaten restlos löschen?')) {
+        pagesData = [];
+        try {
+          const db = await openDatabase();
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).clear();
+        } catch(e){}
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const k of keys) { await caches.delete(k); }
+        }
+        if (navigator.serviceWorker) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) { await r.unregister(); }
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        refreshPagesUI();
+        clearStorageModal.style.display = 'none';
+        showToast('Alles vollständig gelöscht');
       }
     });
 
@@ -959,6 +1034,8 @@
     let activeVfFormat = 'a4';
 
     let croppedImageCanvas = document.createElement('canvas');
+    let warpedCanvas = document.createElement('canvas');
+    let warpedOriginalData = null;
 
     // Standard ist IMMER 'original'
     let activeFilter = 'original';
@@ -1011,12 +1088,11 @@
 
     const blankFormatModal = document.getElementById('blankFormatModal');
     const btnOpenNewBlankModal = document.getElementById('btnOpenNewBlankModal');
-    const btnOpenNewBlankModalBottom = document.getElementById('btnOpenNewBlankModalBottom');
     const btnCloseBlankModal = document.getElementById('btnCloseBlankModal');
     const btnCreateBlankSheet = document.getElementById('btnCreateBlankSheet');
 
     const pickTargetSheetModal = document.getElementById('pickTargetSheetModal');
-    const btnClosePickTargetSheetModal = document.getElementById('btnClosePickTargetModal');
+    const btnClosePickTargetModal = document.getElementById('btnClosePickTargetModal');
     const btnTargetNewCustomSheet = document.getElementById('btnTargetNewCustomSheet');
     const lblTargetNewCustomSheet = document.getElementById('lblTargetNewCustomSheet');
 
@@ -1077,7 +1153,7 @@
       cvs.width = Math.round(fmt.wPt * 2);
       cvs.height = Math.round(fmt.hPt * 2);
       const ctx = cvs.getContext('2d');
-      ctx.fillStyle = '#ffffff'; // Garantiert weiß
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, cvs.width, cvs.height);
 
       const newPage = {
@@ -1093,12 +1169,8 @@
       showToast(`Weiße ${fmt.label}-Seite erstellt`);
     }
 
-    [btnOpenNewBlankModal, btnOpenNewBlankModalBottom].forEach(btn => {
-      if (btn) {
-        btn.addEventListener('click', () => {
-          blankFormatModal.style.display = 'flex';
-        });
-      }
+    btnOpenNewBlankModal.addEventListener('click', () => {
+      blankFormatModal.style.display = 'flex';
     });
 
     btnCloseBlankModal.addEventListener('click', () => {
@@ -1407,8 +1479,8 @@
         cropControlsPanel.style.display = 'none';
         filterControlsPanel.style.display = 'flex';
 
-        // 100% UNVERZERRTER ECHTER RECHTECK-ZUSCHNITT!
-        executeUnwarpedCrop(currentRawImage, corners);
+        // Intelligente Entzerrung oder exakter Formschnitt
+        processSmartCrop(currentRawImage, corners);
         renderPerfectionFilter();
       }
     }
@@ -1703,22 +1775,134 @@
     });
 
     // ----------------------------------------------------
-    // 4. ECHTER ZUSCHNITT OHNE JEDE VERZERRUNG
+    // 4. INTELLIGENTE ZUSCHNITTS-LOGIK: RECHTECK VS. FORMSCHNITT
     // ----------------------------------------------------
-    function executeUnwarpedCrop(sourceImg, srcCorners) {
-      const minX = Math.round(Math.min(srcCorners.tl.x, srcCorners.bl.x, srcCorners.tr.x, srcCorners.br.x) * sourceImg.width);
-      const maxX = Math.round(Math.max(srcCorners.tl.x, srcCorners.bl.x, srcCorners.tr.x, srcCorners.br.x) * sourceImg.width);
-      const minY = Math.round(Math.min(srcCorners.tl.y, srcCorners.tr.y, srcCorners.bl.y, srcCorners.br.y) * sourceImg.height);
-      const maxY = Math.round(Math.max(srcCorners.tl.y, srcCorners.bl.y, srcCorners.tr.y, srcCorners.br.y) * sourceImg.height);
+    function getPerspectiveTransform(src, dst) {
+      let a = [], b = [];
+      for (let i = 0; i < 4; i++) {
+        a.push([src[i].x, src[i].y, 1, 0, 0, 0, -src[i].x * dst[i].x, -src[i].y * dst[i].x]);
+        b.push(dst[i].x);
+        a.push([0, 0, 0, src[i].x, src[i].y, 1, -src[i].x * dst[i].y, -src[i].y * dst[i].y]);
+        b.push(dst[i].y);
+      }
+      return solveLinearSystem(a, b);
+    }
 
-      const cropW = Math.max(20, maxX - minX);
-      const cropH = Math.max(20, maxY - minY);
+    function solveLinearSystem(A, B) {
+      let n = B.length;
+      for (let i = 0; i < n; i++) {
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [B[i], B[maxRow]] = [B[maxRow], B[i]];
+        for (let k = i + 1; k < n; k++) {
+          let f = A[k][i] / A[i][i];
+          for (let j = i; j < n; j++) A[k][j] -= f * A[i][j];
+          B[k] -= f * B[i];
+        }
+      }
+      let x = new Array(n).fill(0);
+      for (let i = n - 1; i >= 0; i--) {
+        let sum = B[i];
+        for (let j = i + 1; j < n; j++) sum -= A[i][j] * x[j];
+        x[i] = sum / A[i][i];
+      }
+      return [...x, 1];
+    }
 
-      croppedImageCanvas.width = cropW;
-      croppedImageCanvas.height = cropH;
-      const ctx = croppedImageCanvas.getContext('2d');
+    // Prüft Geometrie: Ist die Auswahl annähernd rechteckig?
+    function processSmartCrop(sourceImg, srcCorners) {
+      const pTL = { x: srcCorners.tl.x * sourceImg.width, y: srcCorners.tl.y * sourceImg.height };
+      const pTR = { x: srcCorners.tr.x * sourceImg.width, y: srcCorners.tr.y * sourceImg.height };
+      const pBR = { x: srcCorners.br.x * sourceImg.width, y: srcCorners.br.y * sourceImg.height };
+      const pBL = { x: srcCorners.bl.x * sourceImg.width, y: srcCorners.bl.y * sourceImg.height };
 
-      ctx.drawImage(sourceImg, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+      function calcAngle(pPrev, pCurr, pNext) {
+        const v1 = { x: pPrev.x - pCurr.x, y: pPrev.y - pCurr.y };
+        const v2 = { x: pNext.x - pCurr.x, y: pNext.y - pCurr.y };
+        const dot = v1.x * v2.x + v1.y * v2.y;
+        const mag = Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y);
+        if (mag === 0) return 90;
+        return Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI);
+      }
+
+      const aTL = calcAngle(pBL, pTL, pTR);
+      const aTR = calcAngle(pTL, pTR, pBR);
+      const aBR = calcAngle(pTR, pBR, pBL);
+      const aBL = calcAngle(pBR, pBL, pTL);
+
+      // Wenn die Winkel alle grob rechtwinklig sind (72° bis 108°): Begradigen als Rechteck!
+      const isRoughlyRectangular = [aTL, aTR, aBR, aBL].every(a => a >= 72 && a <= 108);
+
+      if (isRoughlyRectangular) {
+        // Perspektivische Begradigung ohne jede Stauchung
+        const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        const outWidth = Math.round(Math.max(dist(pTL, pTR), dist(pBL, pBR)));
+        const outHeight = Math.round(Math.max(dist(pTL, pBL), dist(pTR, pBR)));
+
+        croppedImageCanvas.width = outWidth;
+        croppedImageCanvas.height = outHeight;
+        const dCtx = croppedImageCanvas.getContext('2d');
+        const dstData = dCtx.createImageData(outWidth, outHeight);
+
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = sourceImg.width; srcCanvas.height = sourceImg.height;
+        const sCtx = srcCanvas.getContext('2d');
+        sCtx.drawImage(sourceImg, 0, 0);
+        const srcData = sCtx.getImageData(0, 0, sourceImg.width, sourceImg.height);
+
+        const H = getPerspectiveTransform([{ x: 0, y: 0 }, { x: outWidth, y: 0 }, { x: outWidth, y: outHeight }, { x: 0, y: outHeight }], [pTL, pTR, pBR, pBL]);
+        const dPixels = dstData.data;
+        const sPixels = srcData.data;
+        const sW = srcCanvas.width;
+        const sH = srcCanvas.height;
+
+        let idx = 0;
+        for (let y = 0; y < outHeight; y++) {
+          for (let x = 0; x < outWidth; x++) {
+            const denom = H[6] * x + H[7] * y + H[8];
+            const srcX = Math.floor((H[0] * x + H[1] * y + H[2]) / denom);
+            const srcY = Math.floor((H[3] * x + H[4] * y + H[5]) / denom);
+
+            if (srcX >= 0 && srcX < sW && srcY >= 0 && srcY < sH) {
+              const sIdx = (srcY * sW + srcX) * 4;
+              dPixels[idx] = sPixels[sIdx];
+              dPixels[idx + 1] = sPixels[sIdx + 1];
+              dPixels[idx + 2] = sPixels[sIdx + 2];
+              dPixels[idx + 3] = 255;
+            }
+            idx += 4;
+          }
+        }
+        dCtx.putImageData(dstData, 0, 0);
+      } else {
+        // Nicht rechtwinklig: Form exakt beibehalten (Polygon-Maskierung auf weißem Grund)
+        const pts = [pTL, pTR, pBR, pBL];
+        const minX = Math.floor(Math.min(...pts.map(p => p.x)));
+        const maxX = Math.ceil(Math.max(...pts.map(p => p.x)));
+        const minY = Math.floor(Math.min(...pts.map(p => p.y)));
+        const maxY = Math.ceil(Math.max(...pts.map(p => p.y)));
+
+        const w = Math.max(20, maxX - minX);
+        const h = Math.max(20, maxY - minY);
+
+        croppedImageCanvas.width = w;
+        croppedImageCanvas.height = h;
+        const ctx = croppedImageCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x - minX, pts[0].y - minY);
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x - minX, pts[i].y - minY);
+        }
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(sourceImg, minX, minY, w, h, 0, 0, w, h);
+        ctx.restore();
+      }
     }
 
     document.querySelectorAll('.filter-card').forEach(card => {
@@ -1838,7 +2022,7 @@
         return;
       }
 
-      // FARB-SCAN PRO / BLITZLICHT
+      // FARB-SCAN PRO / BLITZLICHT-DÄMPFUNG
       const bgSmall = document.createElement('canvas');
       bgSmall.width = 36; bgSmall.height = Math.round(36 * (h / w));
       const bgCtx = bgSmall.getContext('2d');
@@ -1929,7 +2113,7 @@
     });
 
     // ----------------------------------------------------
-    // 5. SPEICHERN: DIREKT & ZUVERLÄSSIG
+    // 5. SPEICHER-DIALOG (3 PFADE)
     // ----------------------------------------------------
     let pendingScanDataUrl = null;
     let pendingScanAspect = 1;
@@ -2021,7 +2205,7 @@
       openLayoutEditor(targetIdx);
     });
 
-    btnClosePickTargetSheetModal.addEventListener('click', () => {
+    btnClosePickTargetModal.addEventListener('click', () => {
       pickTargetSheetModal.style.display = 'none';
     });
 
@@ -2085,14 +2269,14 @@
     }
 
     // ----------------------------------------------------
-    // 6. MONTAGE-EDITOR
+    // 6. BEARBEITEN-EDITOR (MÖGLICHKEIT ZUM VERSCHIEBEN & DREHEN)
     // ----------------------------------------------------
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
       const page = pagesData[pageIndex];
       const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
 
-      layoutPageTitle.innerText = `Montage`;
+      layoutPageTitle.innerText = `Bearbeiten (${fmt.label})`;
       lblCurrentSheetFormat.innerText = `Format: ${fmt.label} ▾`;
       layoutModal.style.display = 'flex';
 
@@ -2393,7 +2577,7 @@
     }
 
     // ----------------------------------------------------
-    // 7. SEITENVERWALTUNG & UI
+    // 7. SEITENVERWALTUNG & ÜBERSICHT (BEARBEITEN-MODUS)
     // ----------------------------------------------------
     function refreshPagesUI() {
       pagesGrid.innerHTML = '';
@@ -2414,26 +2598,26 @@
         const card = document.createElement('div');
         card.className = 'page-card';
         card.innerHTML = `
-          <div class="thumb-wrapper" onclick="openLayoutEditor(${idx})" title="Montage & Bearbeiten">
+          <div class="thumb-wrapper" onclick="openLayoutEditor(${idx})" title="Tippen zum Bearbeiten">
             <span class="format-tag">${fmt.label}</span>
             <img src="${p.previewUrl}" alt="Seite ${idx + 1}" />
             <div class="edit-hint">
-              <i data-lucide="layout" style="width:15px;"></i> Montage
+              <i data-lucide="edit-3" style="width:15px;"></i> Bearbeiten
             </div>
           </div>
           <div class="card-info">
             <div class="card-nav">
-              <button class="card-nav-btn" onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Nach links">←</button>
-              <button class="card-nav-btn" onclick="movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Nach rechts">→</button>
+              <button class="card-nav-btn" onclick="event.stopPropagation(); movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Nach links">←</button>
+              <button class="card-nav-btn" onclick="event.stopPropagation(); movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Nach rechts">→</button>
             </div>
-            <div class="card-handle">
-              <span>⠿</span> ${idx + 1}
+            <div class="card-handle" onclick="openLayoutEditor(${idx})">
+              <span>⠿</span> Seite ${idx + 1}
             </div>
             <div style="display:flex; gap:0.25rem;">
-              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="downloadSingleImage(${idx})" title="Bild herunterladen">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="event.stopPropagation(); downloadSingleImage(${idx})" title="Bild herunterladen">
                 <i data-lucide="image-down" style="width:13px;height:13px;"></i>
               </button>
-              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="removePage(${idx})" title="Löschen">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="event.stopPropagation(); removePage(${idx})" title="Löschen">
                 <i data-lucide="trash-2" style="width:13px;height:13px;color:var(--danger);"></i>
               </button>
             </div>
@@ -2468,7 +2652,7 @@
     };
 
     // ----------------------------------------------------
-    // 8. PDF-EXPORT (100% ZUVERLÄSSIG & SCHNELL)
+    // 8. PDF-EXPORT (100% ZUVERLÄSSIG)
     // ----------------------------------------------------
     btnOpenExportModal.addEventListener('click', () => {
       const now = new Date();
