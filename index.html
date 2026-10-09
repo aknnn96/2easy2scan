@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -290,7 +290,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     }
     .filter-card.active { border-color: var(--primary); background: #1e293b; color: #fff; }
 
-    /* Platzsparende, intuitive 2-Spalten Slider-Matrix (inkl. Helligkeit!) */
+    /* Platzsparende, intuitive 2-Spalten Slider-Matrix (inkl. Brightness!) */
     .sliders-grid-compact {
       display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.75rem;
     }
@@ -304,7 +304,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       accent-color: var(--primary); width: 100%; cursor: pointer; height: 14px;
     }
 
-    /* Montage/Bearbeiten Editor */
+    /* Montage/Edit Editor */
     #layoutModal { background: #050811; }
     .layout-stage {
       flex: 1; display: flex; align-items: center; justify-content: center;
@@ -371,29 +371,50 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     }
     .save-choice-card:hover { border-color: var(--primary); background: #131c31; }
     .save-choice-card i { color: var(--primary); flex-shrink: 0; }
+    #welcomeScreen { position:fixed; inset:0; z-index:280; display:flex; align-items:center; justify-content:center; overflow:auto; padding:calc(1.5rem + env(safe-area-inset-top,0px)) 1.5rem calc(1.5rem + env(safe-area-inset-bottom,0px)); background:var(--bg); }
+    .welcome-card { width:100%; max-width:360px; display:flex; flex-direction:column; gap:1rem; text-align:center; }
+    .welcome-card h1 { font-size:1.8rem; }
+    .welcome-card p { color:var(--text-sub); line-height:1.5; margin-bottom:0.5rem; }
+    .welcome-card .btn { width:100%; padding:1rem; justify-content:center; min-height:52px; }
+    .welcome-card .version-stamp { margin:0; }
+    .welcome-icon { margin:auto; color:var(--primary); }
+    .welcome-icon svg { width:56px; height:56px; }
+    .modal-dialog { padding-top:calc(1rem + env(safe-area-inset-top,0px)); padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px)); }
+    .modal-content { max-height:calc(100dvh - 2rem - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); }
+    .camera-overlay { padding-top:calc(1rem + env(safe-area-inset-top,0px)); padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px)); }
   </style>
 </head>
 <body>
+<section id="welcomeScreen" aria-labelledby="welcomeTitle">
+ <div class="welcome-card">
+  <div class="welcome-icon"><i data-lucide="scan-line"></i></div>
+  <h1 id="welcomeTitle">SmartScan Pro</h1>
+  <p>Scan, edit and export documents on your device.</p>
+  <button class="btn" id="btnUseWeb">Use Web-Version</button>
+  <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
+  <span class="version-stamp">Version 1.1.0</span>
+ </div>
+</section>
 
-  <div class="app-shell">
+  <div class="app-shell" id="mainApp" inert aria-hidden="true">
     <header>
       <div class="brand-box">
         <div class="brand">
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Version 1.0.1</span>
+        <span class="version-stamp">Version 1.1.0</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
-        <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Speicher & Cache verwalten">
+        <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
           <i data-lucide="trash-2"></i>
         </button>
-        <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="PDF Speichern">
+        <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="Save PDF">
           <i data-lucide="file-down"></i>
         </button>
-        <button class="btn btn-secondary" id="btnOpenNewBlankModal" title="Blanko-Seite anlegen">
+        <button class="btn btn-secondary" id="btnOpenNewBlankModal" title="Create a blank page">
           <i data-lucide="file-plus"></i>
-          <span>+ Blanko</span>
+          <span>+ Blank</span>
         </button>
       </div>
     </header>
@@ -402,15 +423,15 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       <div class="env-notice" id="envNotice" style="display: none;">
         <i data-lucide="info" style="width: 16px; height: 16px;"></i>
         <div>
-          <strong>Lokale Datei:</strong> Browser sperren Live-Kameras ohne HTTPS. Beim Auslösen öffnet sich automatisch deine native Smartphone-Kamera!
+          <strong>Local file:</strong> The live viewfinder requires a secure browser connection. Open the HTTPS website and allow camera access, or import an image from Gallery.
         </div>
       </div>
 
       <div id="emptyView" class="empty-state">
         <i data-lucide="layers"></i>
-        <h3>Keine Dokumente vorhanden</h3>
+        <h3>No documents yet</h3>
         <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.35rem; max-width: 320px;">
-          Tippe unten auf den Kamera-Button oder erstelle oben eine Blanko-Seite.
+          Tap the camera button below or create a blank page above.
         </p>
       </div>
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
@@ -419,19 +440,18 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     <!-- Mobile Bottom Bar -->
     <div class="mobile-bottom-bar">
       <!-- App / Offline Button links neben der Kamera -->
-      <button class="btn btn-secondary" id="btnPwaInfo" style="display:none;padding: 0.45rem 0.75rem;" title="Startbildschirm & Offline-Info">
+      <button class="btn btn-secondary" id="btnPwaInfo" style="display:none;padding: 0.45rem 0.75rem;" title="Home screen and offline info">
         <i data-lucide="smartphone"></i>
         <span>App / Offline</span>
       </button>
 
-      <div class="floating-shutter-trigger" id="btnStartScan" title="Scan starten">
+      <div class="floating-shutter-trigger" id="btnStartScan" title="Start scanning">
         <i data-lucide="camera" style="width: 26px; height: 26px;"></i>
-        <input type="file" id="nativeCameraFallbackInput" accept="image/*" capture="environment" style="display:none;" />
       </div>
 
-      <label class="btn btn-secondary" style="padding: 0.45rem 0.75rem; cursor:pointer;" title="Aus Galerie wählen">
+      <label class="btn btn-secondary" style="padding: 0.45rem 0.75rem; cursor:pointer;" title="Choose from Gallery">
         <i data-lucide="image"></i>
-        <span>Galerie</span>
+        <span>Gallery</span>
         <input type="file" id="bottomGalleryInput" accept="image/*" style="display:none;" />
       </label>
     </div>
@@ -443,37 +463,37 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-size: 1.05rem; font-weight: 700; display:flex; align-items:center; gap:0.4rem;">
           <i data-lucide="trash-2" style="color:var(--danger); width:18px;"></i>
-          Speicher & Cache verwalten
+          Manage storage and cache
         </h3>
         <button class="btn btn-secondary btn-icon" id="btnCloseClearModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <p style="font-size: 0.78rem; color: var(--text-sub); line-height: 1.4;">
-        Wähle aus, welche Daten aus dem lokalen Browser-Speicher entfernt werden sollen:
+        Choose which data to remove from this browser:
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 0.55rem;">
         <div class="save-choice-card" id="btnDeleteOnlyDocs">
           <i data-lucide="layers" style="width:20px; height:20px; color:var(--warning);"></i>
           <div>
-            <div style="font-weight:700; font-size:0.85rem; color:#fff;">Gespeicherte Scans & Dokumente löschen</div>
-            <div style="font-size:0.7rem; color:var(--text-sub);">Löscht alle erstellten Seiten aus der internen Datenbank</div>
+            <div style="font-weight:700; font-size:0.85rem; color:#fff;">Delete saved scans and documents</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">Removes all pages from the local database</div>
           </div>
         </div>
 
         <div class="save-choice-card" id="btnDeleteOnlyCache">
           <i data-lucide="smartphone" style="width:20px; height:20px; color:var(--primary);"></i>
           <div>
-            <div style="font-weight:700; font-size:0.85rem; color:#fff;">Offline-App-Cache & PWA leeren</div>
-            <div style="font-size:0.7rem; color:var(--text-sub);">Setzt PWA-Dateien zurück. Dokumente bleiben erhalten.</div>
+            <div style="font-weight:700; font-size:0.85rem; color:#fff;">Clear offline app cache</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">Removes the offline app copy. Documents are kept.</div>
           </div>
         </div>
 
         <div class="save-choice-card" id="btnDeleteEverything" style="border-color: rgba(239,68,68,0.4);">
           <i data-lucide="trash-2" style="width:20px; height:20px; color:var(--danger);"></i>
           <div>
-            <div style="font-weight:700; font-size:0.85rem; color:#f87171;">Alles restlos löschen</div>
-            <div style="font-size:0.7rem; color:var(--text-sub);">Löscht Dokumente, Cache und alle Einstellungen vollständig</div>
+            <div style="font-weight:700; font-size:0.85rem; color:#f87171;">Delete all local data</div>
+            <div style="font-size:0.7rem; color:var(--text-sub);">Removes documents, the app cache and settings</div>
           </div>
         </div>
       </div>
@@ -486,23 +506,23 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-size: 1.05rem; font-weight: 700; display:flex; align-items:center; gap:0.4rem;">
           <i data-lucide="smartphone" style="color:var(--primary); width:18px;"></i>
-          Startbildschirm & Offline
+          Home screen and offline
         </h3>
         <button class="btn btn-secondary btn-icon" id="btnClosePwaModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.45; display: flex; flex-direction: column; gap: 0.75rem;">
-        <p><strong>So nutzt du SmartScan offline:</strong></p>
+        <p><strong>How to use SmartScan offline:</strong></p>
         <ol style="padding-left:1.25rem;display:grid;gap:0.45rem;">
-          <li>Diese Seite einmal mit Internet öffnen und unten auf „Offline bereit“ warten.</li>
-          <li>Die App installieren oder über Chrome zum Startbildschirm hinzufügen.</li>
-          <li>Danach kannst du sie über das Symbol auch ohne Internet öffnen, scannen, bearbeiten und PDFs speichern.</li>
+          <li>Open this page online once and wait for “Offline ready” below.</li>
+          <li>Install the app or add it to your home screen from the Chrome menu.</li>
+          <li>Then open it from the home screen icon without internet to scan, edit and save PDFs.</li>
         </ol>
-        <p id="offlineStatus" role="status" aria-live="polite">Offline-Kopie wird geprüft …</p>
-        <button class="btn" id="btnNativeInstall" disabled style="display:inline-flex;width:100%;justify-content:center;padding:0.8rem;">App installieren</button>
-        <p id="installAvailability" role="status" aria-live="polite">Chrome hat die direkte Installation noch nicht freigegeben. Sobald der Dialog verfügbar ist, wird der Button aktiv.</p>
-        <p>Falls der Button grau bleibt: Chrome-Menü ⋮ → „Zum Startbildschirm hinzufügen“. Auch diese Verknüpfung kann die vorbereitete Offline-Kopie öffnen.</p>
-        <p>Scans bleiben lokal in diesem Browser gespeichert. Werden Websitedaten oder Browser-Speicher gelöscht, musst du die Offline-Kopie erneut online vorbereiten. Wichtige Dokumente als PDF sichern.</p>
+        <p id="offlineStatus" role="status" aria-live="polite">Checking the offline copy …</p>
+        <button class="btn" id="btnNativeInstall" disabled style="display:inline-flex;width:100%;justify-content:center;padding:0.8rem;">Install app</button>
+        <p id="installAvailability" role="status" aria-live="polite">Chrome has not offered direct installation yet. The button becomes active when the native dialog is available.</p>
+        <p>If the button stays disabled, use Chrome menu ⋮ → “Add to Home screen”. This shortcut can also open the prepared offline copy.</p>
+        <p>Scans are stored locally in this browser. If website data or browser storage is cleared, open the page online to prepare it again. Save important documents as PDFs.</p>
       </div>
     </div>
   </div>
@@ -531,7 +551,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <button class="format-pill" data-cfmt="a6">🏷️ A6</button>
           <button class="format-pill" data-cfmt="letter">📜 Letter</button>
           <button class="format-pill" data-cfmt="legal">⚖️ Legal</button>
-          <button class="format-pill" data-cfmt="free">✂️ Frei</button>
+          <button class="format-pill" data-cfmt="free">✂️ Free</button>
         </div>
 
         <button class="btn btn-secondary btn-icon" id="btnToggleTorch" style="display: none;">
@@ -540,7 +560,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       </div>
 
       <div class="camera-bottom-bar">
-        <label class="btn btn-secondary btn-icon" title="Aus Galerie wählen">
+        <label class="btn btn-secondary btn-icon" title="Choose from Gallery">
           <i data-lucide="image"></i>
           <input type="file" id="fallbackFileInput" accept="image/*" style="display:none;" />
         </label>
@@ -561,18 +581,18 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     <!-- Header Schritt 1: Zuschnitt -->
     <header id="cropHeader" style="background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem;">
       <button class="btn btn-secondary btn-icon" id="btnCancelScanEdit" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
-      <span style="font-weight: 700; font-size: 0.88rem; flex:1; text-align: center;">1. Bereich zuschneiden</span>
+      <span style="font-weight: 700; font-size: 0.88rem; flex:1; text-align: center;">1. Crop the scan</span>
       <button class="btn" id="btnProceedToFilter" style="font-size:0.78rem; padding:0.4rem 0.8rem;">
-        <span>Weiter</span> <i data-lucide="chevron-right" style="width:14px;"></i>
+        <span>Next</span> <i data-lucide="chevron-right" style="width:14px;"></i>
       </button>
     </header>
 
-    <!-- Header Schritt 2: Filter & Speichern -->
+    <!-- Header Schritt 2: Filter & Save -->
     <header id="filterHeader" style="display:none; background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem; gap: 0.4rem;">
-      <button class="btn btn-secondary btn-icon" id="btnBackToCrop" style="width:34px;height:34px;" title="Zurück zum Zuschnitt"><i data-lucide="arrow-left"></i></button>
-      <span style="font-weight: 700; font-size: 0.88rem; flex:1;">2. Filter wählen</span>
+      <button class="btn btn-secondary btn-icon" id="btnBackToCrop" style="width:34px;height:34px;" title="Back to crop"><i data-lucide="arrow-left"></i></button>
+      <span style="font-weight: 700; font-size: 0.88rem; flex:1;">2. Choose a filter</span>
       <button class="btn" id="btnOpenSaveChoiceModal" style="font-size:0.8rem; padding:0.45rem 0.85rem;">
-        <i data-lucide="check"></i> <span>Speichern</span>
+        <i data-lucide="check"></i> <span>Save</span>
       </button>
     </header>
 
@@ -595,13 +615,13 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     <!-- Panel Schritt 1: Zuschnitt & 90°-Drehung -->
     <div class="controls-panel" id="cropControlsPanel">
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;">
-        <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600;">Papierformat wählen:</span>
+        <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600;">Choose paper size:</span>
         <div style="display: flex; gap: 0.3rem;">
           <button class="btn btn-secondary" id="btnAutoDetectCorners" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">
             <i data-lucide="refresh-cw" style="width:12px;"></i> Reset
           </button>
           <button class="btn btn-secondary" id="btnRotateSource" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">
-            <i data-lucide="rotate-cw" style="width:12px;"></i> 90° Drehen
+            <i data-lucide="rotate-cw" style="width:12px;"></i> Rotate 90°
           </button>
         </div>
       </div>
@@ -613,56 +633,56 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <button class="format-pill" data-efmt="a6">🏷️ A6</button>
         <button class="format-pill" data-efmt="letter">📜 Letter</button>
         <button class="format-pill" data-efmt="legal">⚖️ Legal</button>
-        <button class="format-pill" data-efmt="free">✂️ Frei</button>
+        <button class="format-pill" data-efmt="free">✂️ Free</button>
       </div>
 
-      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Tippe in den Rahmen zum Verschieben oder ziehe an den Ecken</span>
+      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Drag inside the frame to move it, or drag its corners.</span>
     </div>
 
-    <!-- Panel Schritt 2: Filter (5 synchrone Schieberegler inkl. Helligkeit!) -->
+    <!-- Panel Schritt 2: Filter (5 synchrone Schieberegler inkl. Brightness!) -->
     <div class="controls-panel" id="filterControlsPanel" style="display: none;">
       <div class="filter-grid">
         <div class="filter-card active" data-filter="original">
           <div>📷 Original</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Unverändert</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Unchanged</span>
         </div>
         <div class="filter-card" data-filter="magic">
-          <div>🌟 Farb-Scan Pro</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Farbecht & Weiß</span>
+          <div>🌟 Color Scan Pro</div>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">True color, white paper</span>
         </div>
         <div class="filter-card" data-filter="bw">
-          <div>📄 Laserscan</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Sauvola S/W</span>
+          <div>📄 Laser scan</div>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Sauvola B/W</span>
         </div>
         <div class="filter-card" data-filter="antiglare">
-          <div>⚡ Blitzlicht</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Glanz-Dämpfung</span>
+          <div>⚡ Flash cleanup</div>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Glare reduction</span>
         </div>
         <div class="filter-card" data-filter="ink">
-          <div>🖊️ Tinte/Stempel</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Unterschrift</span>
+          <div>🖊️ Ink / stamp</div>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Signature</span>
         </div>
         <div class="filter-card" data-filter="gray">
-          <div>🌫️ Graustufen</div>
-          <span style="font-size: 0.6rem; color: var(--text-sub);">Schattenfrei</span>
+          <div>🌫️ Grayscale</div>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Shadow reduction</span>
         </div>
       </div>
 
       <!-- 2-Spalten Matrix für 5 Schieberegler -->
       <div class="sliders-grid-compact">
-        <!-- 1. Helligkeit (NEU) -->
+        <!-- 1. Brightness (NEU) -->
         <div class="slider-item-compact">
           <div class="slider-header-compact">
-            <span>☀️ Helligkeit</span>
+            <span>☀️ Brightness</span>
             <span id="valBrightness">0</span>
           </div>
           <input type="range" id="sliderBrightness" min="-50" max="50" value="0" />
         </div>
 
-        <!-- 2. Kontrast -->
+        <!-- 2. Contrast -->
         <div class="slider-item-compact">
           <div class="slider-header-compact">
-            <span>🌓 Kontrast</span>
+            <span>🌓 Contrast</span>
             <span id="valContrast">0</span>
           </div>
           <input type="range" id="sliderContrast" min="-50" max="50" value="0" />
@@ -671,7 +691,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <!-- 3. Papier-Bleichung -->
         <div class="slider-item-compact">
           <div class="slider-header-compact">
-            <span>📄 Papier-Weiß</span>
+            <span>📄 Paper whiteness</span>
             <span id="valBleach">0</span>
           </div>
           <input type="range" id="sliderBleach" min="0" max="100" value="0" />
@@ -680,7 +700,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <!-- 4. Tinten-Stärke -->
         <div class="slider-item-compact">
           <div class="slider-header-compact">
-            <span>✒️ Tinten-Tiefe</span>
+            <span>✒️ Ink depth</span>
             <span id="valInk">0</span>
           </div>
           <input type="range" id="sliderInk" min="0" max="100" value="0" />
@@ -689,7 +709,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <!-- 5. Glanz- & Blitzdämpfung (über 2 Spalten) -->
         <div class="slider-item-compact" style="grid-column: span 2;">
           <div class="slider-header-compact">
-            <span>⚡ Glanz- & Blitz-Dämpfung</span>
+            <span>⚡ Glare and flash reduction</span>
             <span id="valGlare">0</span>
           </div>
           <input type="range" id="sliderGlare" min="0" max="100" value="0" />
@@ -702,7 +722,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   <div id="saveChoiceModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">Wie möchtest du speichern?</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">How would you like to save?</h3>
         <button class="btn btn-secondary btn-icon" id="btnCloseSaveChoiceModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
@@ -710,48 +730,48 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         <div class="save-choice-card" id="btnSaveAsFullPage">
           <i data-lucide="file-check" style="width:22px; height:22px;"></i>
           <div>
-            <div style="font-weight:700; font-size:0.88rem;">Als eigene Vollseite anlegen</div>
-            <div style="font-size:0.72rem; color:var(--text-sub);">Der Scan füllt eine eigenständige Seite vollflächig aus</div>
+            <div style="font-weight:700; font-size:0.88rem;">Save as a full page</div>
+            <div style="font-size:0.72rem; color:var(--text-sub);">The scan fills a separate page</div>
           </div>
         </div>
 
         <div class="save-choice-card" id="btnSaveOnNewBlank">
           <i data-lucide="layout" style="width:22px; height:22px;"></i>
           <div>
-            <div style="font-weight:700; font-size:0.88rem;">Auf neuer Blanko-Seite platzieren</div>
-            <div style="font-size:0.72rem; color:var(--text-sub);">Frei verschiebbar, drehbar & skalierbar mit Papierformatwahl</div>
+            <div style="font-weight:700; font-size:0.88rem;">Place on a new blank page</div>
+            <div style="font-size:0.72rem; color:var(--text-sub);">Move, rotate and resize the scan on your chosen paper size</div>
           </div>
         </div>
 
         <div class="save-choice-card" id="btnSaveOnExisting">
           <i data-lucide="layers" style="width:22px; height:22px;"></i>
           <div>
-            <div style="font-weight:700; font-size:0.88rem;">Auf vorhandener Seite einfügen</div>
-            <div style="font-size:0.72rem; color:var(--text-sub);">Fügt den Scan zu einer bestehenden Seite hinzu</div>
+            <div style="font-weight:700; font-size:0.88rem;">Add to an existing page</div>
+            <div style="font-size:0.72rem; color:var(--text-sub);">Adds the scan to an existing page</div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Format-Auswahl für neue Blanko-Seite beim Platzieren -->
+  <!-- Format-Auswahl für neue Blank-Seite beim Platzieren -->
   <div id="pickTargetSheetModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">Format für Blanko-Seite wählen</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Choose a blank page size</h3>
         <button class="btn btn-secondary btn-icon" id="btnClosePickTargetModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 0.5rem;">
         <div class="formats-grid" id="pickNewSheetFormatsGrid">
           <div class="format-card active" data-pfmt="a4"><div class="f-title">📄 DIN A4</div><div class="f-desc">Standard</div></div>
-          <div class="format-card" data-pfmt="a5"><div class="f-title">📝 DIN A5</div><div class="f-desc">Kompakt</div></div>
-          <div class="format-card" data-pfmt="a3"><div class="f-title">📐 DIN A3</div><div class="f-desc">Großformat</div></div>
-          <div class="format-card" data-pfmt="a6"><div class="f-title">🏷️ DIN A6</div><div class="f-desc">Postkarte</div></div>
+          <div class="format-card" data-pfmt="a5"><div class="f-title">📝 DIN A5</div><div class="f-desc">Compact</div></div>
+          <div class="format-card" data-pfmt="a3"><div class="f-title">📐 DIN A3</div><div class="f-desc">Large format</div></div>
+          <div class="format-card" data-pfmt="a6"><div class="f-title">🏷️ DIN A6</div><div class="f-desc">Postcard</div></div>
         </div>
 
         <button class="btn btn-secondary" id="btnTargetNewCustomSheet" style="justify-content: center; padding: 0.65rem 1rem;">
-          <i data-lucide="file-plus"></i> <span id="lblTargetNewCustomSheet">Auf neuer DIN A4-Seite anlegen</span>
+          <i data-lucide="file-plus"></i> <span id="lblTargetNewCustomSheet">Create on a new DIN A4 page</span>
         </button>
       </div>
     </div>
@@ -761,25 +781,25 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   <div id="existingPagePickerModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">Seite auswählen</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Choose a page</h3>
         <button class="btn btn-secondary btn-icon" id="btnCloseExistingPickerModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 0.6rem;">
-        <label style="font-size: 0.78rem; color: var(--text-sub); font-weight: 600;">Wähle die Zielseite aus:</label>
+        <label style="font-size: 0.78rem; color: var(--text-sub); font-weight: 600;">Choose the target page:</label>
         <select id="selectTargetSheet" style="background: #090d16; border: 1px solid var(--surface-border); border-radius: 8px; padding: 0.65rem; color: #fff; font-size: 0.85rem;"></select>
         <button class="btn" id="btnConfirmAddToExisting" style="justify-content: center; padding: 0.65rem;">
-          <i data-lucide="check"></i> <span>Dort einfügen</span>
+          <i data-lucide="check"></i> <span>Add here</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Format nachträglich ändern Modal (Für Bearbeiten-Editor) -->
+  <!-- Format nachträglich ändern Modal (Für Edit-Editor) -->
   <div id="changeSheetFormatModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">Format dieser Seite ändern</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Change page size</h3>
         <button class="btn btn-secondary btn-icon" id="btnCloseChangeFormatModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
@@ -794,30 +814,30 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     </div>
   </div>
 
-  <!-- Blanko-Format Auswahl Modal (für Header) -->
+  <!-- Blank-Format Auswahl Modal (für Header) -->
   <div id="blankFormatModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">Format für Blanko-Seite wählen</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Choose a blank page size</h3>
         <button class="btn btn-secondary btn-icon" id="btnCloseBlankModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div class="formats-grid">
         <div class="format-card active" data-fmt="a4"><div class="f-title">📄 DIN A4</div><div class="f-desc">210 × 297 mm (Standard)</div></div>
-        <div class="format-card" data-fmt="a5"><div class="f-title">📝 DIN A5</div><div class="f-desc">148 × 210 mm (Kompakt)</div></div>
-        <div class="format-card" data-fmt="a3"><div class="f-title">📐 DIN A3</div><div class="f-desc">297 × 420 mm (Großformat)</div></div>
-        <div class="format-card" data-fmt="a6"><div class="f-title">🏷️ DIN A6</div><div class="f-desc">105 × 148 mm (Postkarte)</div></div>
+        <div class="format-card" data-fmt="a5"><div class="f-title">📝 DIN A5</div><div class="f-desc">148 × 210 mm (Compact)</div></div>
+        <div class="format-card" data-fmt="a3"><div class="f-title">📐 DIN A3</div><div class="f-desc">297 × 420 mm (Large format)</div></div>
+        <div class="format-card" data-fmt="a6"><div class="f-title">🏷️ DIN A6</div><div class="f-desc">105 × 148 mm (Postcard)</div></div>
         <div class="format-card" data-fmt="letter"><div class="f-title">📜 US Letter</div><div class="f-desc">216 × 279 mm (US Standard)</div></div>
-        <div class="format-card" data-fmt="legal"><div class="f-title">⚖️ US Legal</div><div class="f-desc">216 × 356 mm (Verträge)</div></div>
+        <div class="format-card" data-fmt="legal"><div class="f-title">⚖️ US Legal</div><div class="f-desc">216 × 356 mm (Contracts)</div></div>
       </div>
 
       <button class="btn" id="btnCreateBlankSheet" style="justify-content: center; padding: 0.7rem;">
-        <i data-lucide="plus"></i> Blanko-Seite anlegen
+        <i data-lucide="plus"></i> Create a blank page
       </button>
     </div>
   </div>
 
-  <!-- Bearbeiten-Editor Modal -->
+  <!-- Edit-Editor Modal -->
   <div id="layoutModal" class="modal-fullscreen">
     <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem; flex-wrap: wrap;">
       <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
@@ -829,11 +849,11 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
 
       <button class="btn" id="btnScanAnotherOntoPage" style="background: var(--accent); padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="plus-circle" style="width:13px;"></i>
-        <span>Scan ergänzen</span>
+        <span>Add a scan</span>
       </button>
 
       <button class="btn" id="btnSaveLayoutPage" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
-        <i data-lucide="check"></i> <span>Fertig</span>
+        <i data-lucide="check"></i> <span>Done</span>
       </button>
     </header>
 
@@ -846,45 +866,45 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   <div id="exportModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">PDF-Export & Speichern</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Export and save PDF</h3>
         <button class="btn btn-secondary btn-icon" id="btnCloseExportModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 0.3rem;">
-        <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Dateiname der PDF</label>
+        <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">PDF file name</label>
         <div style="display: flex; align-items: center; background: #090d16; border: 1px solid var(--surface-border); border-radius: 8px; overflow: hidden; padding-right: 0.75rem;">
-          <input type="text" id="pdfFileName" placeholder="z. B. Dokumentenscan" style="flex: 1; background: transparent; border: none; outline: none; padding: 0.6rem 0.75rem; color: #fff; font-size: 0.85rem;" />
+          <input type="text" id="pdfFileName" placeholder="e.g. Document scan" style="flex: 1; background: transparent; border: none; outline: none; padding: 0.6rem 0.75rem; color: #fff; font-size: 0.85rem;" />
           <span style="color: var(--text-sub); font-size: 0.8rem; font-weight: 600;">.pdf</span>
         </div>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-        <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Qualitätsstufe</label>
+        <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Quality</label>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
           <button class="btn btn-secondary" id="btnCompLow" data-preset="low" style="border:1px solid var(--surface-border); padding: 0.5rem 0.2rem; text-align: center; border-radius:8px;">
-            <div style="font-weight:700;">Kompakt</div>
+            <div style="font-weight:700;">Compact</div>
             <div style="font-size: 0.6rem; opacity: 0.7;">~200 KB</div>
           </button>
           <button class="btn btn-secondary" id="btnCompMed" data-preset="medium" style="border:1px solid var(--surface-border); padding: 0.5rem 0.2rem; text-align: center; border-radius:8px;">
             <div style="font-weight:700;">Standard</div>
-            <div style="font-size: 0.6rem; opacity: 0.7;">Ausgewogen</div>
+            <div style="font-size: 0.6rem; opacity: 0.7;">Balanced</div>
           </button>
           <button class="btn btn-secondary" id="btnCompHigh" data-preset="high" style="border:1px solid var(--surface-border); padding: 0.5rem 0.2rem; text-align: center; border-radius:8px;">
-            <div style="font-weight:700;">HD Druck</div>
-            <div style="font-size: 0.6rem; opacity: 0.7;">Max. Schärfe</div>
+            <div style="font-weight:700;">HD print</div>
+            <div style="font-size: 0.6rem; opacity: 0.7;">Maximum detail</div>
           </button>
         </div>
       </div>
 
       <button class="btn" id="btnStartExport" style="width: 100%; justify-content: center; padding: 0.65rem;">
-        <i data-lucide="download"></i> Jetzt PDF Herunterladen
+        <i data-lucide="download"></i> Download PDF
       </button>
     </div>
   </div>
 
   <div id="toastBadge" class="toast-badge">
     <i data-lucide="check" style="width:15px;"></i>
-    <span id="toastText">Aktion ausgeführt</span>
+    <span id="toastText">Done</span>
   </div>
 
   <script>
@@ -901,7 +921,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       a6:     { label: 'DIN A6',    wPt: 297.64, hPt: 419.53, ratio: 419.53 / 297.64 },
       letter: { label: 'US Letter', wPt: 612.00, hPt: 792.00, ratio: 792.00 / 612.00 },
       legal:  { label: 'US Legal',  wPt: 612.00, hPt: 1008.00, ratio: 1008.00 / 612.00 },
-      free:   { label: 'Frei',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
+      free:   { label: 'Free',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
     };
 
     // ====================================================
@@ -957,7 +977,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           store.put(p);
         }
       } catch (err) {
-        console.warn('Fehler beim Speichern in IndexedDB:', err);
+        console.warn('Could not save to IndexedDB:', err);
       }
     }
 
@@ -974,7 +994,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           }
         };
       } catch (err) {
-        console.warn('Fehler beim Laden aus IndexedDB:', err);
+        console.warn('Could not load from IndexedDB:', err);
       }
     }
 
@@ -999,7 +1019,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     });
 
     document.getElementById('btnDeleteOnlyDocs').addEventListener('click', async () => {
-      if (confirm('Möchtest du alle gespeicherten Dokumente und Scans löschen?')) {
+      if (confirm('Delete all saved documents and scans?')) {
         pagesData = [];
         try {
           const db = await openDatabase();
@@ -1008,20 +1028,20 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         } catch(e){}
         refreshPagesUI();
         clearStorageModal.style.display = 'none';
-        showToast('Dokumente gelöscht');
+        showToast('Documents deleted');
       }
     });
 
     document.getElementById('btnDeleteOnlyCache').addEventListener('click', async () => {
-      if (confirm('Möchtest du den Offline-Cache und PWA-Daten leeren?')) {
+      if (confirm('Delete the offline app copy? Open the page online to prepare it again.')) {
         await clearOwnOfflineCache();
         clearStorageModal.style.display = 'none';
-        showToast('Offline-Cache geleert');
+        showToast('Offline cache cleared');
       }
     });
 
     document.getElementById('btnDeleteEverything').addEventListener('click', async () => {
-      if (confirm('Möchtest du wirklich alle Dokumente, den Offline-Cache und alle Websitedaten restlos löschen?')) {
+      if (confirm('Delete all documents, the offline app copy and local settings?')) {
         pagesData = [];
         try {
           const db = await openDatabase();
@@ -1033,7 +1053,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         sessionStorage.clear();
         refreshPagesUI();
         clearStorageModal.style.display = 'none';
-        showToast('Alles vollständig gelöscht');
+        showToast('All local data deleted');
       }
     });
 
@@ -1052,8 +1072,21 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         const reg = await navigator.serviceWorker.getRegistration(appScope);
         if (reg && reg.scope === appScope) await reg.unregister();
       }
-      setOfflineStatus('Offline-Kopie gelöscht. Zum erneuten Vorbereiten online neu laden.');
+      setOfflineStatus('Offline copy deleted. Reload online to prepare it again.');
     }
+
+    function enterWebApp() {
+      document.getElementById('welcomeScreen').style.display = 'none';
+      const app = document.getElementById('mainApp');
+      app.inert = false;
+      app.removeAttribute('aria-hidden');
+    }
+    document.getElementById('btnUseWeb').addEventListener('click', enterWebApp);
+    document.getElementById('btnWelcomeInstall').addEventListener('click', () => {
+      document.getElementById('pwaInfoModal').style.display = 'flex';
+      safeRenderIcons();
+      if (nativeInstallPrompt) nativeInstallButton.click();
+    });
     document.getElementById('btnPwaInfo').addEventListener('click', () => {
       document.getElementById('pwaInfoModal').style.display = 'flex';
       safeRenderIcons();
@@ -1070,7 +1103,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       nativeInstallPrompt = event;
       nativeInstallButton.disabled = false;
       document.getElementById('btnPwaInfo').style.display = 'inline-flex';
-      document.getElementById('installAvailability').textContent = 'Direkte Installation verfügbar.';
+      document.getElementById('installAvailability').textContent = 'Direct installation is available.';
     });
     nativeInstallButton.addEventListener('click', async () => {
       const prompt = nativeInstallPrompt;
@@ -1081,16 +1114,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         await prompt.prompt();
         const choice = await prompt.userChoice;
         document.getElementById('installAvailability').textContent =
-          choice.outcome === 'accepted' ? 'Installation gestartet.' : 'Installation abgebrochen. Du kannst weiterhin die Browser-Verknüpfung nutzen.';
+          choice.outcome === 'accepted' ? 'Installation started.' : 'Installation dismissed. You can still use the home screen shortcut.';
       } catch (error) {
-        document.getElementById('installAvailability').textContent = 'Chrome hat den Dialog nicht geöffnet. Bitte die Browser-Verknüpfung nutzen.';
+        document.getElementById('installAvailability').textContent = 'Chrome did not open the install dialog. Use the home screen shortcut instead.';
       }
     });
     window.addEventListener('appinstalled', () => {
       nativeInstallPrompt = null;
       nativeInstallButton.disabled = true;
-      nativeInstallButton.textContent = 'App installiert';
-      document.getElementById('installAvailability').textContent = 'Du kannst die App über das Startbildschirm-Symbol öffnen.';
+      nativeInstallButton.textContent = 'App installed';
+      document.getElementById('installAvailability').textContent = 'Open the app using its home screen icon.';
     });
     function enableInstallManifest() {
       const worker = navigator.serviceWorker.controller;
@@ -1122,13 +1155,13 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         // An already prepared offline copy must work without fetching sw.js.
         if (!navigator.onLine) {
           const reg = await navigator.serviceWorker.getRegistration(appScope);
-          const cache = await caches.open(offlineCachePrefix + 'v1');
+          const cache = await caches.open(offlineCachePrefix + 'v2');
           if (reg && reg.scope === appScope && reg.active &&
               reg.active.scriptURL === workerUrl &&
               await cache.match(new URL('index.html', appScope).href)) {
             showOfflineControls(true);
             enableInstallManifest();
-            setOfflineStatus('Offline bereit – die gespeicherte App-Kopie wird verwendet.');
+            setOfflineStatus('Offline ready – using the saved app copy.');
           }
           return;
         }
@@ -1144,13 +1177,13 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         const source = await response.text();
         if (!source.includes('smartscan-offline-')) return;
         showOfflineControls(true);
-        setOfflineStatus('Offline-Kopie wird vorbereitet …');
+        setOfflineStatus('Preparing the offline copy …');
         const reg = await navigator.serviceWorker.register(workerUrl, {scope: appScope, updateViaCache: 'none'});
         if (!reg.active) {
           await new Promise((resolve, reject) => {
             const worker = reg.installing || reg.waiting;
-            if (!worker) return reject(new Error('Worker fehlt'));
-            const timeout = setTimeout(() => finish(new Error('Offline-Vorbereitung dauert zu lange')), 15000);
+            if (!worker) return reject(new Error('Offline worker missing'));
+            const timeout = setTimeout(() => finish(new Error('Offline preparation timed out')), 15000);
             function finish(error) {
               clearTimeout(timeout);
               worker.removeEventListener('statechange', check);
@@ -1158,19 +1191,19 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
             }
             function check() {
               if (worker.state === 'activated') finish();
-              else if (worker.state === 'redundant') finish(new Error('Worker konnte nicht aktiviert werden'));
+              else if (worker.state === 'redundant') finish(new Error('The offline worker could not be activated'));
             }
             worker.addEventListener('statechange', check);
             check();
           });
         }
         enableInstallManifest();
-        const cache = await caches.open(offlineCachePrefix + 'v1');
-        if (!await cache.match(new URL('index.html', appScope).href)) throw new Error('Cache fehlt');
-        setOfflineStatus('Offline bereit – diese Webadresse kann jetzt auch ohne Internet geöffnet werden.');
+        const cache = await caches.open(offlineCachePrefix + 'v2');
+        if (!await cache.match(new URL('index.html', appScope).href)) throw new Error('Offline cache missing');
+        setOfflineStatus('Offline ready – this address can now open without internet.');
       } catch (error) {
-        console.warn('Optionale Offline-Vorbereitung:', error);
-        setOfflineStatus('Offline-Kopie nicht bereit. Internet prüfen und online neu laden.');
+        console.warn('Optional offline preparation:', error);
+        setOfflineStatus('Offline copy is not ready. Check your connection and reload online.');
       }
     }
     window.addEventListener('load', prepareOffline);
@@ -1193,7 +1226,6 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     const cameraModal = document.getElementById('cameraModal');
     const cameraVideo = document.getElementById('cameraVideo');
     const btnStartScan = document.getElementById('btnStartScan');
-    const nativeCameraFallbackInput = document.getElementById('nativeCameraFallbackInput');
     const bottomGalleryInput = document.getElementById('bottomGalleryInput');
     const btnCloseCamera = document.getElementById('btnCloseCamera');
     const btnToggleTorch = document.getElementById('btnToggleTorch');
@@ -1324,7 +1356,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       savePagesToStorage();
       refreshPagesUI();
       openLayoutEditor(pagesData.length - 1);
-      showToast(`Weiße ${fmt.label}-Seite erstellt`);
+      showToast(`Created a blank ${fmt.label} page`);
     }
 
     if (btnOpenNewBlankModal) {
@@ -1364,29 +1396,14 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     });
 
     function triggerCameraCapture() {
-      if (isLocalFileContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        nativeCameraFallbackInput.click();
-      } else {
-        openCameraStream();
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        showToast('Live camera unavailable. Open the HTTPS website or use Gallery.');
+        return;
       }
+      openCameraStream();
     }
 
     bottomGalleryInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          openScanCropEditor(img, null);
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
-    });
-
-    nativeCameraFallbackInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
@@ -1428,69 +1445,86 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       });
     });
 
-    function openCameraStream() {
+    let cameraRequestId = 0;
+    async function openCameraStream() {
+      closeCameraStream();
+      const requestId = ++cameraRequestId;
       cameraModal.style.display = 'flex';
+      btnShutter.disabled = true;
       document.querySelectorAll('#camFormatsBar .format-pill').forEach(b => {
         b.classList.toggle('active', b.dataset.cfmt === activeVfFormat);
       });
       updateViewfinderGeometry();
-
-      const constraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 3840, min: 1920 },
-          height: { ideal: 2160, min: 1080 }
+      let stream;
+      try {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } }
+          });
+        } catch (error) {
+          if (error.name !== 'OverconstrainedError') throw error;
+          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: 'environment'}}});
         }
-      };
-
-      navigator.mediaDevices.getUserMedia(constraints).then(async stream => {
+        if (requestId !== cameraRequestId) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
         mediaStream = stream;
         cameraVideo.srcObject = stream;
+        await cameraVideo.play();
+        if (requestId !== cameraRequestId) return;
         track = stream.getVideoTracks()[0];
-
-        if (window.ImageCapture) {
-          imageCapture = new ImageCapture(track);
-        } else {
-          imageCapture = null;
+        try { imageCapture = window.ImageCapture ? new ImageCapture(track) : null; }
+        catch { imageCapture = null; }
+        let caps = {};
+        try { caps = track.getCapabilities ? track.getCapabilities() : {}; } catch {}
+        const advanced = {};
+        if (caps.focusMode?.includes('continuous')) advanced.focusMode = 'continuous';
+        if (caps.exposureMode?.includes('continuous')) advanced.exposureMode = 'continuous';
+        if (Object.keys(advanced).length && track.applyConstraints) {
+          try { await track.applyConstraints({advanced: [advanced]}); } catch {}
         }
-
-        const caps = track.getCapabilities ? track.getCapabilities() : {};
-        const adv = {};
-        if (caps.focusMode && caps.focusMode.includes('continuous')) adv.focusMode = 'continuous';
-        if (caps.exposureMode && caps.exposureMode.includes('continuous')) adv.exposureMode = 'continuous';
-
-        if (Object.keys(adv).length > 0 && track.applyConstraints) {
-          try { await track.applyConstraints({ advanced: [adv] }); } catch(err){}
-        }
-
-        if (caps.torch) {
-          btnToggleTorch.style.display = 'inline-flex';
-          torchState = false;
-        } else {
-          btnToggleTorch.style.display = 'none';
-        }
-      }).catch(err => {
-        cameraModal.style.display = 'none';
-        nativeCameraFallbackInput.click();
-      });
+        if (requestId !== cameraRequestId) return;
+        btnToggleTorch.style.display = caps.torch ? 'inline-flex' : 'none';
+        torchState = false;
+        btnShutter.disabled = false;
+      } catch (error) {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (requestId !== cameraRequestId) return;
+        closeCameraStream();
+        const message = error.name === 'NotAllowedError'
+          ? 'Camera access denied. Allow camera access in Chrome site settings, then try again.'
+          : error.name === 'NotFoundError'
+          ? 'No camera found. Import an image from Gallery.'
+          : error.name === 'NotReadableError'
+          ? 'Camera is busy. Close other camera apps and try again.'
+          : 'Could not start the live camera. Try again or import an image from Gallery.';
+        showToast(message);
+        console.warn('Live camera:', error);
+      }
     }
 
     cameraVideo.addEventListener('click', async () => {
       if (track && track.applyConstraints) {
         try {
           await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-          showToast('Fokussiert...');
+          showToast('Focused…');
         } catch(e){}
       }
     });
 
     function closeCameraStream() {
-      if (track) {
-        if (torchState) track.applyConstraints({ advanced: [{ torch: false }] });
-        track.stop();
-      }
+      ++cameraRequestId;
       if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+      mediaStream = null;
+      track = null;
+      imageCapture = null;
+      torchState = false;
+      cameraVideo.srcObject = null;
       cameraModal.style.display = 'none';
+      btnShutter.disabled = true;
+      btnToggleTorch.style.display = 'none';
     }
     btnCloseCamera.addEventListener('click', closeCameraStream);
 
@@ -1734,14 +1768,14 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
 
       drawCropPreview();
       updateHandlePositions();
-      showToast('Bild um 90° gedreht');
+      showToast('Image rotated 90°');
     });
 
     btnAutoDetectCorners.addEventListener('click', () => {
       applyFormatRatioToCorners(activeCropFormat);
       drawCropPreview();
       updateHandlePositions();
-      showToast('Ecken zurückgesetzt');
+      showToast('Corners reset');
     });
 
     function drawCropPreview() {
@@ -2119,7 +2153,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       renderPerfectionFilter();
     });
 
-    // FILTER-ENGINE: Helligkeit, Kontrast, Glanz & kein Negativ
+    // FILTER-ENGINE: Brightness, Contrast, Glanz & kein Negativ
     function renderPerfectionFilter() {
       const w = croppedImageCanvas.width;
       const h = croppedImageCanvas.height;
@@ -2139,7 +2173,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       const contrast = filterParams.contrast;
       const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
-      // 100% UNVERÄNDERTES ORIGINAL (außer Helligkeit/Kontrast manuell verstellt)
+      // 100% UNVERÄNDERTES ORIGINAL (außer Brightness/Contrast manuell verstellt)
       if (activeFilter === 'original') {
         for (let i = 0; i < len; i += 4) {
           let r = src[i] + bright;
@@ -2359,10 +2393,10 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       pagesData.push(newPage);
       savePagesToStorage();
       refreshPagesUI(); // Sofort sichtbar!
-      showToast('Als Vollseite gespeichert!');
+      showToast('Saved as a full page!');
     });
 
-    // 2. Auf neuer Blanko-Seite
+    // 2. Auf neuer Blank-Seite
     btnSaveOnNewBlank.addEventListener('click', () => {
       saveChoiceModal.style.display = 'none';
       scanEditorModal.style.display = 'none';
@@ -2375,7 +2409,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       saveChoiceModal.style.display = 'none';
 
       if (pagesData.length === 0) {
-        showToast('Keine vorhandene Seite gefunden');
+        showToast('No existing page found');
         return;
       }
 
@@ -2383,7 +2417,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       pagesData.forEach((p, idx) => {
         const opt = document.createElement('option');
         opt.value = idx;
-        opt.innerText = `Seite ${idx + 1} (${FORMAT_PRESETS[p.formatKey].label})`;
+        opt.innerText = `Page ${idx + 1} (${FORMAT_PRESETS[p.formatKey].label})`;
         selectTargetSheet.appendChild(opt);
       });
 
@@ -2413,7 +2447,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         document.querySelectorAll('#pickNewSheetFormatsGrid .format-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
         selectedPlacementFormat = card.dataset.pfmt;
-        lblTargetNewCustomSheet.innerText = `Auf neuer ${FORMAT_PRESETS[selectedPlacementFormat].label}-Seite anlegen`;
+        lblTargetNewCustomSheet.innerText = `Create on a new ${FORMAT_PRESETS[selectedPlacementFormat].label} page`;
       });
     });
 
@@ -2464,7 +2498,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         rotation: 0,
         locked: false
       });
-      showToast('Scan auf Seite platziert!');
+      showToast('Scan placed on the page!');
     }
 
     // ----------------------------------------------------
@@ -2475,7 +2509,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       const page = pagesData[pageIndex];
       const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
 
-      if (layoutPageTitle) layoutPageTitle.innerText = `Bearbeiten`;
+      if (layoutPageTitle) layoutPageTitle.innerText = `Edit`;
       lblCurrentSheetFormat.innerText = `Format: ${fmt.label} ▾`;
       layoutModal.style.display = 'flex';
 
@@ -2512,7 +2546,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         });
 
         renderSheetItems();
-        showToast(`Seitenformat geändert: ${fmt.label}`);
+        showToast(`Page size changed: ${fmt.label}`);
       });
     });
 
@@ -2527,7 +2561,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       saveActivePagePreview().then(() => {
         layoutModal.style.display = 'none';
         refreshPagesUI();
-        showToast('Seite gespeichert');
+        showToast('Page saved');
       });
     });
 
@@ -2558,16 +2592,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
           <img src="${item.dataUrl}" />
           ${item.locked ? `<div class="lock-badge"><i data-lucide="lock" style="width:12px;height:12px;"></i></div>` : ''}
           <div class="item-toolbar">
-            <button class="item-btn" onclick="rotateItemOnSheet('${item.id}', event)" title="Um 90° drehen">
+            <button class="item-btn" onclick="rotateItemOnSheet('${item.id}', event)" title="Rotate 90°">
               <i data-lucide="rotate-cw" style="width:14px;height:14px;"></i>
             </button>
-            <button class="item-btn ${item.locked ? 'active' : ''}" onclick="toggleItemLock('${item.id}', event)" title="Sperren / Entsperren">
+            <button class="item-btn ${item.locked ? 'active' : ''}" onclick="toggleItemLock('${item.id}', event)" title="Lock / unlock">
               <i data-lucide="${item.locked ? 'lock' : 'unlock'}" style="width:14px;height:14px;"></i>
             </button>
-            <button class="item-btn" onclick="duplicateItem('${item.id}', event)" title="Duplizieren">
+            <button class="item-btn" onclick="duplicateItem('${item.id}', event)" title="Duplicate">
               <i data-lucide="copy" style="width:14px;height:14px;"></i>
             </button>
-            <button class="item-btn" style="color:var(--danger);" onclick="deleteItem('${item.id}', event)" title="Löschen">
+            <button class="item-btn" style="color:var(--danger);" onclick="deleteItem('${item.id}', event)" title="Delete">
               <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
             </button>
           </div>
@@ -2591,7 +2625,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         item.rotation = ((item.rotation || 0) + 90) % 360;
         const el = document.getElementById(itemId);
         if (el) el.style.transform = `rotate(${item.rotation}deg)`;
-        showToast(`Um 90° gedreht (${item.rotation}°)`);
+        showToast(`Rotated 90° (${item.rotation}°)`);
       }
     };
 
@@ -2602,7 +2636,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       if (item) {
         item.locked = !item.locked;
         renderSheetItems();
-        showToast(item.locked ? 'Fixiert 🔒' : 'Entsperrt 🔓');
+        showToast(item.locked ? 'Locked 🔒' : 'Unlocked 🔓');
       }
     };
 
@@ -2796,26 +2830,26 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         const card = document.createElement('div');
         card.className = 'page-card';
         card.innerHTML = `
-          <div class="thumb-wrapper" onclick="openLayoutEditor(${idx})" title="Tippen zum Bearbeiten">
+          <div class="thumb-wrapper" onclick="openLayoutEditor(${idx})" title="Tap to edit">
             <span class="format-tag">${fmt.label}</span>
-            <img src="${p.previewUrl}" alt="Seite ${idx + 1}" />
+            <img src="${p.previewUrl}" alt="Page ${idx + 1}" />
             <div class="edit-hint">
-              <i data-lucide="edit-3" style="width:15px;"></i> Bearbeiten
+              <i data-lucide="edit-3" style="width:15px;"></i> Edit
             </div>
           </div>
           <div class="card-info" onclick="openLayoutEditor(${idx})">
             <div class="card-nav" onclick="event.stopPropagation();">
-              <button class="card-nav-btn" onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Nach links">←</button>
-              <button class="card-nav-btn" onclick="movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Nach rechts">→</button>
+              <button class="card-nav-btn" onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Move left">←</button>
+              <button class="card-nav-btn" onclick="movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Move right">→</button>
             </div>
             <div class="card-handle">
-              <span>⠿</span> Seite ${idx + 1}
+              <span>⠿</span> Page ${idx + 1}
             </div>
             <div style="display:flex; gap:0.25rem;" onclick="event.stopPropagation();">
-              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="downloadSingleImage(${idx})" title="Bild herunterladen">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="downloadSingleImage(${idx})" title="Download image">
                 <i data-lucide="image-down" style="width:13px;height:13px;"></i>
               </button>
-              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="removePage(${idx})" title="Löschen">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="removePage(${idx})" title="Delete">
                 <i data-lucide="trash-2" style="width:13px;height:13px;color:var(--danger);"></i>
               </button>
             </div>
@@ -2845,7 +2879,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
     window.downloadSingleImage = function(index) {
       const a = document.createElement('a');
       a.href = pagesData[index].previewUrl;
-      a.download = `Scan_Seite_${index + 1}.jpg`;
+      a.download = `Scan_Page_${index + 1}.jpg`;
       a.click();
     };
 
@@ -2978,14 +3012,14 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         a.href = URL.createObjectURL(blob);
 
         let cleanName = pdfFileName.value.trim().replace(/\.pdf$/i, '').replace(/[/\\?%*:|"<>]/g, '_');
-        if (!cleanName) cleanName = 'Dokumentenscan';
+        if (!cleanName) cleanName = 'Document_scan';
         a.download = `${cleanName}.pdf`;
 
         a.click();
-        showToast(`"${cleanName}.pdf" heruntergeladen! 🎉`);
+        showToast(`"${cleanName}.pdf" downloaded! 🎉`);
       } catch (err) {
-        console.error("PDF Export Fehler:", err);
-        alert('Fehler beim Exportieren der PDF: ' + err.message);
+        console.error("PDF export error:", err);
+        alert('Could not export PDF: ' + err.message);
       } finally {
         btnOpenExportModal.innerHTML = origHtml;
         btnOpenExportModal.disabled = false;

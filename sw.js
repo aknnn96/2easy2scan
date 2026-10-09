@@ -2,12 +2,12 @@
 const ROOT = new URL('./', self.location.href);
 const APP = new URL('index.html', ROOT).href;
 const PREFIX = 'smartscan-offline-' + encodeURIComponent(ROOT.pathname) + '-';
-const CACHE = PREFIX + 'v1';
+const CACHE = PREFIX + 'v2';
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const response = await fetch(APP, {cache: 'reload'});
     if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) {
-      throw new Error('App konnte nicht geladen werden');
+      throw new Error('Could not load the app');
     }
     const cache = await caches.open(CACHE);
     await cache.put(APP, response);
@@ -40,7 +40,7 @@ self.addEventListener('fetch', event => {
     event.waitUntil(refresh.then(() => {}, () => {}));
     if (cached) return cached;
     try { return await refresh; }
-    catch { return new Response('Offline-Kopie fehlt. Bitte einmal online öffnen.', {status: 503, headers: {'Content-Type':'text/plain; charset=utf-8'}}); }
+    catch { return new Response('Offline copy missing. Open this page online once.', {status: 503, headers: {'Content-Type':'text/plain; charset=utf-8'}}); }
   })());
 });
 
