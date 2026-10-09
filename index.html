@@ -5,20 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>SmartScan Pro</title>
 
-  <!-- PWA Metatags für native App-Darstellung am Smartphone -->
+  <!-- PWA Metatags für native App-Darstellung im Vollbild (ohne Adressleiste) -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="SmartScan Pro" />
   <meta name="theme-color" content="#121826" />
 
-  <!-- Dynamisches Inline-Manifest -->
+  <!-- Dynamisches Inline-Manifest für Standalone / Fullscreen PWA -->
   <link rel="manifest" id="dynamicManifest" />
 
   <!-- Bibliotheken (100% lokal im Browser) -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
   <style>
     :root {
@@ -36,9 +35,9 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     html, body {
-      overscroll-behavior-y: none;
+      overscroll-behavior-y: contain;
       background-color: var(--bg); color: var(--text-main); min-height: 100vh;
-      display: flex; justify-content: center; overflow-x: hidden;
+      display: flex; justify-content: center; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     }
 
     .app-shell {
@@ -67,8 +66,6 @@
     .btn:active { transform: scale(0.96); }
     .btn-secondary { background: var(--surface-border); color: var(--text-main); }
     .btn-secondary:hover { background: #2c3b53; }
-    .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
-    .btn-danger:hover { background: var(--danger); color: #fff; }
     .btn-icon { width: 36px; height: 36px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -221,8 +218,8 @@
     /* Stage */
     .editor-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 0.75rem; }
     #canvasWarpWrapper { position: relative; touch-action: none; max-width: 100%; max-height: 100%; }
-    #canvasCrop { max-width: 100%; max-height: calc(100vh - 260px); display: block; border-radius: 8px; }
-    #canvasFilterPreview { max-width: 100%; max-height: calc(100vh - 270px); display: block; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+    #canvasCrop { max-width: 100%; max-height: calc(100vh - 280px); display: block; border-radius: 8px; }
+    #canvasFilterPreview { max-width: 100%; max-height: calc(100vh - 280px); display: block; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
 
     .corner-handle {
       position: absolute; width: 34px; height: 34px; border-radius: 50%;
@@ -230,7 +227,7 @@
       transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none;
     }
 
-    /* Smarte Lupe */
+    /* Smarte Lupe: Optimaler 1.45x Zoom (keine Riesen-Pixel) */
     .crop-loupe {
       position: fixed; width: 130px; height: 130px; border-radius: 50%;
       border: 3.5px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.9);
@@ -246,21 +243,30 @@
 
     .controls-panel {
       background: var(--surface); border-top: 1px solid var(--surface-border);
-      padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.65rem; max-height: 42vh; overflow-y: auto;
+      padding: 0.65rem 0.9rem; display: flex; flex-direction: column; gap: 0.55rem; max-height: 44vh; overflow-y: auto;
     }
 
-    .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+    .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; }
     .filter-card {
       background: #0f172a; border: 1.5px solid var(--surface-border); border-radius: 8px;
-      padding: 0.45rem 0.2rem; text-align: center; cursor: pointer; font-size: 0.7rem; font-weight: 600;
+      padding: 0.4rem 0.2rem; text-align: center; cursor: pointer; font-size: 0.68rem; font-weight: 600;
       color: var(--text-sub); transition: 0.15s;
     }
     .filter-card.active { border-color: var(--primary); background: #1e293b; color: #fff; }
 
-    .sliders-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.6rem 1rem; }
-    .slider-item { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; }
-    .slider-header { display: flex; justify-content: space-between; color: var(--text-sub); font-weight: 500; }
-    .slider-item input[type=range] { accent-color: var(--primary); width: 100%; cursor: pointer; }
+    /* Platzsparende, intuitive 2-Spalten Slider-Matrix (inkl. Helligkeit!) */
+    .sliders-grid-compact {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem 0.75rem;
+    }
+    .slider-item-compact {
+      display: flex; flex-direction: column; gap: 0.15rem; font-size: 0.72rem;
+    }
+    .slider-header-compact {
+      display: flex; justify-content: space-between; color: var(--text-sub); font-weight: 600; font-size: 0.7rem;
+    }
+    .slider-item-compact input[type=range] {
+      accent-color: var(--primary); width: 100%; cursor: pointer; height: 14px;
+    }
 
     /* Montage/Bearbeiten Editor */
     #layoutModal { background: #050811; }
@@ -270,7 +276,7 @@
     }
     .canvas-sheet {
       background: #ffffff !important; position: relative;
-      max-width: 460px; max-height: calc(100vh - 140px); width: 100%;
+      width: min(100%, calc((100dvh - 170px) * 0.707)); height: auto; aspect-ratio: 595.28 / 841.89; max-width: 460px; max-height: calc(100dvh - 150px);
       box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 4px; overflow: hidden;
       touch-action: none; user-select: none;
     }
@@ -340,10 +346,9 @@
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Build: 2026-10-09 21:46:10</span>
+        <span class="version-stamp">Build: 2026-10-09 22:25:00</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
-        <!-- Mülleimer-Button zum selektiven Leeren von Speicher & Cache -->
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Speicher & Cache verwalten">
           <i data-lucide="trash-2"></i>
         </button>
@@ -377,6 +382,7 @@
 
     <!-- Mobile Bottom Bar -->
     <div class="mobile-bottom-bar">
+      <!-- App / Offline Button links neben der Kamera -->
       <button class="btn btn-secondary" id="btnPwaInfo" style="padding: 0.45rem 0.75rem;" title="App installieren & Offline-Info">
         <i data-lucide="smartphone"></i>
         <span>App / Offline</span>
@@ -411,7 +417,6 @@
       </p>
 
       <div style="display: flex; flex-direction: column; gap: 0.55rem;">
-        <!-- Option 1: Nur Dokumente -->
         <div class="save-choice-card" id="btnDeleteOnlyDocs">
           <i data-lucide="layers" style="width:20px; height:20px; color:var(--warning);"></i>
           <div>
@@ -420,7 +425,6 @@
           </div>
         </div>
 
-        <!-- Option 2: Nur Offline-Cache -->
         <div class="save-choice-card" id="btnDeleteOnlyCache">
           <i data-lucide="smartphone" style="width:20px; height:20px; color:var(--primary);"></i>
           <div>
@@ -429,7 +433,6 @@
           </div>
         </div>
 
-        <!-- Option 3: Alles restlos löschen -->
         <div class="save-choice-card" id="btnDeleteEverything" style="border-color: rgba(239,68,68,0.4);">
           <i data-lucide="trash-2" style="width:20px; height:20px; color:var(--danger);"></i>
           <div>
@@ -441,35 +444,28 @@
     </div>
   </div>
 
-  <!-- PWA & Offline Info Modal -->
+  <!-- PWA & Offline Modal (Direkte Installation ohne Textanleitung!) -->
   <div id="pwaInfoModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="font-size: 1.05rem; font-weight: 700; display:flex; align-items:center; gap:0.4rem;">
           <i data-lucide="smartphone" style="color:var(--primary); width:18px;"></i>
-          App & Offline-Funktion
+          App-Installation & Offline
         </h3>
         <button class="btn btn-secondary btn-icon" id="btnClosePwaModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.45; display: flex; flex-direction: column; gap: 0.75rem;">
-        <div style="background:#0b1120; padding:0.75rem; border-radius:10px; border:1px solid var(--surface-border);">
-          <strong style="color:var(--text-main); display:block; margin-bottom:0.25rem;">📱 Als echte App installieren:</strong>
-          <span>
-            <strong>Chrome / Android:</strong> Im Browser-Menü (3 Punkte oben rechts) auf <em>„App installieren“</em> oder <em>„Zum Startbildschirm hinzufügen“</em> tippen.<br><br>
-            <strong>iOS / Safari:</strong> Unten auf das <em>Teilen-Symbol</em> tippen und <em>„Zum Home-Bildschirm“</em> wählen.
-          </span>
-        </div>
-
-        <button class="btn" id="btnTriggerPwaInstall" style="display:none; justify-content:center; padding:0.65rem;">
+        <!-- Direkter Installations-Button (Keine Text-Anleitung!) -->
+        <button class="btn" id="btnTriggerPwaInstall" style="width:100%; justify-content:center; padding:0.75rem; font-size:0.9rem;">
           <i data-lucide="download"></i> Jetzt als App installieren
         </button>
 
         <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 0.75rem; font-size: 0.78rem; color: #fbbf24;">
           <strong>💾 Lokaler Speicher & Offline-Hinweis:</strong><br>
-          Alle Seiten werden automatisch im lokalen Browser-Speicher (IndexedDB) gesichert. 
+          Seiten werden lokal in IndexedDB gespeichert. Offline-Start der App ist nur nach Bereitstellung über HTTPS mit korrekt eingerichteter Service-Worker-Datei zuverlässig möglich; eine einzelne HTML-Datei (file://) kann sich nicht selbst als Offline-App installieren. 
           <br><br>
-          <strong>Wichtig:</strong> Wenn du den Browser-Cache / Websitedaten löschst (z. B. über den Mülleimer oben), werden die Dokumente entfernt.
+          <strong>Wichtig:</strong> Browserdaten-Löschen kann gespeicherte Dokumente entfernen. Bereits gespeicherte Seiten lassen sich offline bearbeiten, solange dieselbe Browser-Origin und IndexedDB verfügbar sind.
         </div>
       </div>
     </div>
@@ -518,7 +514,7 @@
     </div>
   </div>
 
-  <!-- Vergrößerungs-Lupe -->
+  <!-- Vergrößerungs-Lupe (optimaler 1.45x Zoom) -->
   <div class="crop-loupe" id="cropLoupe">
     <canvas id="loupeCanvas" width="130" height="130"></canvas>
     <div class="loupe-crosshair"></div>
@@ -584,69 +580,83 @@
         <button class="format-pill" data-efmt="free">✂️ Frei</button>
       </div>
 
-      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Tippe in den Rahmen zum Verschieben oder ziehe an den Ecken (Smarte Lupe aktiv)</span>
+      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Tippe in den Rahmen zum Verschieben oder ziehe an den Ecken</span>
     </div>
 
-    <!-- Panel Schritt 2: Filter (Standard: Original!) -->
+    <!-- Panel Schritt 2: Filter (5 synchrone Schieberegler inkl. Helligkeit!) -->
     <div class="controls-panel" id="filterControlsPanel" style="display: none;">
       <div class="filter-grid">
         <div class="filter-card active" data-filter="original">
           <div>📷 Original</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Unverändert</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Unverändert</span>
         </div>
         <div class="filter-card" data-filter="magic">
           <div>🌟 Farb-Scan Pro</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Farbecht & Weiß</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Farbecht & Weiß</span>
         </div>
         <div class="filter-card" data-filter="bw">
           <div>📄 Laserscan</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Sauvola S/W</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Sauvola S/W</span>
         </div>
         <div class="filter-card" data-filter="antiglare">
           <div>⚡ Blitzlicht</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Hotspot-Dämpfung</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Glanz-Dämpfung</span>
         </div>
         <div class="filter-card" data-filter="ink">
           <div>🖊️ Tinte/Stempel</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Unterschrift</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Unterschrift</span>
         </div>
         <div class="filter-card" data-filter="gray">
           <div>🌫️ Graustufen</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Schattenfrei</span>
+          <span style="font-size: 0.6rem; color: var(--text-sub);">Schattenfrei</span>
         </div>
       </div>
 
-      <div class="sliders-grid">
-        <div class="slider-item">
-          <div class="slider-header">
-            <span>Papier-Bleichung</span>
-            <span id="valBleach">70</span>
+      <!-- 2-Spalten Matrix für 5 Schieberegler -->
+      <div class="sliders-grid-compact">
+        <!-- 1. Helligkeit (NEU) -->
+        <div class="slider-item-compact">
+          <div class="slider-header-compact">
+            <span>☀️ Helligkeit</span>
+            <span id="valBrightness">0</span>
           </div>
-          <input type="range" id="sliderBleach" min="0" max="100" value="70" />
+          <input type="range" id="sliderBrightness" min="-50" max="50" value="0" />
         </div>
 
-        <div class="slider-item">
-          <div class="slider-header">
-            <span>Blitz- & Glanz-Dämpfung</span>
-            <span id="valGlare">60</span>
+        <!-- 2. Kontrast -->
+        <div class="slider-item-compact">
+          <div class="slider-header-compact">
+            <span>🌓 Kontrast</span>
+            <span id="valContrast">0</span>
           </div>
-          <input type="range" id="sliderGlare" min="0" max="100" value="60" />
+          <input type="range" id="sliderContrast" min="-50" max="50" value="0" />
         </div>
 
-        <div class="slider-item">
-          <div class="slider-header">
-            <span>Tinten-Stärke</span>
-            <span id="valInk">40</span>
+        <!-- 3. Papier-Bleichung -->
+        <div class="slider-item-compact">
+          <div class="slider-header-compact">
+            <span>📄 Papier-Weiß</span>
+            <span id="valBleach">0</span>
           </div>
-          <input type="range" id="sliderInk" min="0" max="100" value="40" />
+          <input type="range" id="sliderBleach" min="0" max="100" value="0" />
         </div>
 
-        <div class="slider-item">
-          <div class="slider-header">
-            <span>Kontrast</span>
-            <span id="valContrast">15</span>
+        <!-- 4. Tinten-Stärke -->
+        <div class="slider-item-compact">
+          <div class="slider-header-compact">
+            <span>✒️ Tinten-Tiefe</span>
+            <span id="valInk">0</span>
           </div>
-          <input type="range" id="sliderContrast" min="-100" max="100" value="15" />
+          <input type="range" id="sliderInk" min="0" max="100" value="0" />
+        </div>
+
+        <!-- 5. Glanz- & Blitzdämpfung (über 2 Spalten) -->
+        <div class="slider-item-compact" style="grid-column: span 2;">
+          <div class="slider-header-compact">
+            <span>⚡ Glanz- & Blitz-Dämpfung</span>
+            <span id="valGlare">0</span>
+          </div>
+          <input type="range" id="sliderGlare" min="0" max="100" value="0" />
         </div>
       </div>
     </div>
@@ -722,6 +732,9 @@
       <div style="display: flex; flex-direction: column; gap: 0.6rem;">
         <label style="font-size: 0.78rem; color: var(--text-sub); font-weight: 600;">Wähle die Zielseite aus:</label>
         <select id="selectTargetSheet" style="background: #090d16; border: 1px solid var(--surface-border); border-radius: 8px; padding: 0.65rem; color: #fff; font-size: 0.85rem;"></select>
+        <div id="targetSheetPreviewWrap" style="background:#0b1120;border:1px solid var(--surface-border);border-radius:10px;padding:0.5rem;display:flex;justify-content:center;min-height:180px;">
+          <img id="targetSheetPreview" alt="Vorschau der Zielseite" style="display:block;max-height:32vh;max-width:100%;object-fit:contain;background:white;border-radius:4px;" />
+        </div>
         <button class="btn" id="btnConfirmAddToExisting" style="justify-content: center; padding: 0.65rem;">
           <i data-lucide="check"></i> <span>Dort einfügen</span>
         </button>
@@ -771,7 +784,7 @@
     </div>
   </div>
 
-  <!-- Bearbeiten-Editor Modal (Reinweiß, butterweiches Verschieben & Drehen) -->
+  <!-- Bearbeiten-Editor Modal -->
   <div id="layoutModal" class="modal-fullscreen">
     <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem; flex-wrap: wrap;">
       <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
@@ -783,7 +796,7 @@
 
       <button class="btn" id="btnScanAnotherOntoPage" style="background: var(--accent); padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="plus-circle" style="width:13px;"></i>
-        <span>Scan auf Seite ergänzen</span>
+        <span>Scan ergänzen</span>
       </button>
 
       <button class="btn" id="btnSaveLayoutPage" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
@@ -847,7 +860,7 @@
     }
     safeRenderIcons();
 
-    // Reale Maße in PDF-Punkten (72 DPI) - Ausschließlich echte Papierformate!
+    // Reale Maße in PDF-Punkten (72 DPI)
     const FORMAT_PRESETS = {
       a4:     { label: 'DIN A4',    wPt: 595.28, hPt: 841.89, ratio: 841.89 / 595.28 },
       a5:     { label: 'DIN A5',    wPt: 419.53, hPt: 595.28, ratio: 595.28 / 419.53 },
@@ -858,8 +871,38 @@
       free:   { label: 'Frei',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
     };
 
-    const A4_RENDER_W = 1240;
-    const A4_RENDER_H = 1754;
+    // ====================================================
+    // FILTER PRESETS & SYNCHRONE SLIDER-WERTE
+    // ====================================================
+    const FILTER_PRESETS = {
+      original:  { brightness: 0,  contrast: 0,  bleach: 0,  ink: 0,  glare: 0 },
+      magic:     { brightness: 4,  contrast: 15, bleach: 75, ink: 30, glare: 50 },
+      bw:        { brightness: 0,  contrast: 25, bleach: 85, ink: 55, glare: 40 },
+      antiglare: { brightness: 0,  contrast: 10, bleach: 65, ink: 30, glare: 85 },
+      ink:       { brightness: 5,  contrast: 20, bleach: 80, ink: 65, glare: 40 },
+      gray:      { brightness: 0,  contrast: 15, bleach: 70, ink: 40, glare: 30 }
+    };
+
+    let activeFilter = 'original';
+    let filterParams = { ...FILTER_PRESETS.original };
+
+    // ====================================================
+    // PWA INLINE MANIFEST (VOLLBILD APP)
+    // ====================================================
+    const pwaIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="128" fill="#121826"/><path d="M128 160h256v192H128z" fill="none" stroke="#3b82f6" stroke-width="32" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#3b82f6"/></svg>`;
+    const pwaIconUrl = "data:image/svg+xml;base64," + btoa(pwaIconSvg);
+    const pwaManifest = {
+      name: "SmartScan Pro",
+      short_name: "SmartScan",
+      start_url: window.location.href,
+      display: "standalone",
+      display_override: ["fullscreen", "standalone"],
+      background_color: "#090d16",
+      theme_color: "#121826",
+      icons: [{ src: pwaIconUrl, sizes: "512x512", type: "image/svg+xml" }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: "application/manifest+json" });
+    document.getElementById("dynamicManifest").setAttribute("href", URL.createObjectURL(manifestBlob));
 
     // ====================================================
     // LOKALE INDEXED-DB PERSISTENZ (Dauerhafter Speicher)
@@ -884,36 +927,50 @@
 
     async function savePagesToStorage() {
       try {
+        if (!('indexedDB' in window)) throw new Error('IndexedDB ist in diesem Browser nicht verfügbar.');
         const db = await openDatabase();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        await new Promise((res, rej) => {
-          const clearReq = store.clear();
-          clearReq.onsuccess = res;
-          clearReq.onerror = rej;
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          store.clear();
+          for (const p of pagesData) store.put(p);
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onerror = () => { db.close(); reject(tx.error || new Error('Speichern fehlgeschlagen')); };
+          tx.onabort = () => { db.close(); reject(tx.error || new Error('Speichern abgebrochen')); };
         });
-        for (const p of pagesData) {
-          store.put(p);
-        }
       } catch (err) {
-        console.warn('Fehler beim Speichern in IndexedDB:', err);
+        console.error('Fehler beim Speichern in IndexedDB:', err);
+        showToast('Speichern fehlgeschlagen – bitte Browser-Speicher prüfen');
       }
     }
 
     async function loadPagesFromStorage() {
       try {
+        if (!('indexedDB' in window)) throw new Error('IndexedDB ist nicht verfügbar.');
         const db = await openDatabase();
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.getAll();
-        req.onsuccess = () => {
-          if (req.result && req.result.length > 0) {
-            pagesData = req.result;
-            refreshPagesUI();
-          }
-        };
+        const records = await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const req = tx.objectStore(STORE_NAME).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => reject(req.error);
+          tx.oncomplete = () => db.close();
+        });
+        if (records.length) {
+          pagesData = records.map(p => ({...p, items: Array.isArray(p.items) ? p.items : []}));
+          pagesData.forEach(p => {
+            if (!p.formatKey || !FORMAT_PRESETS[p.formatKey]) p.formatKey = 'a4';
+            if (!p.previewUrl) p.previewUrl = '';
+            if (!p.items.length && p.previewUrl) {
+              const fmt = FORMAT_PRESETS[p.formatKey];
+              p.items = [{id:'item_migrated_'+Date.now()+'_'+Math.random().toString(36).slice(2),dataUrl:p.previewUrl,
+                x:0,y:0,w:100,h:100,aspect:1/fmt.ratio,rotation:0,locked:true}];
+            }
+          });
+          refreshPagesUI();
+        }
       } catch (err) {
         console.warn('Fehler beim Laden aus IndexedDB:', err);
+        showToast('Lokaler Speicher ist nicht verfügbar');
       }
     }
 
@@ -922,7 +979,7 @@
     });
 
     // ====================================================
-    // SPEICHER- & CACHE-VERWALTUNG (3 LÖSCH-OPTIONEN)
+    // SPEICHER- & CACHE-VERWALTUNG
     // ====================================================
     const clearStorageModal = document.getElementById('clearStorageModal');
     const btnOpenClearStorageModal = document.getElementById('btnOpenClearStorageModal');
@@ -937,7 +994,6 @@
       clearStorageModal.style.display = 'none';
     });
 
-    // 1. Nur Scans & Dokumente löschen
     document.getElementById('btnDeleteOnlyDocs').addEventListener('click', async () => {
       if (confirm('Möchtest du alle gespeicherten Dokumente und Scans löschen?')) {
         pagesData = [];
@@ -952,23 +1008,11 @@
       }
     });
 
-    // 2. Nur Offline-Cache & PWA leeren
-    document.getElementById('btnDeleteOnlyCache').addEventListener('click', async () => {
-      if (confirm('Möchtest du den Offline-Cache und PWA-Daten leeren?')) {
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          for (const k of keys) { await caches.delete(k); }
-        }
-        if (navigator.serviceWorker) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) { await r.unregister(); }
-        }
-        clearStorageModal.style.display = 'none';
-        showToast('Offline-Cache geleert');
-      }
+    document.getElementById('btnDeleteOnlyCache').addEventListener('click', () => {
+      clearStorageModal.style.display = 'none';
+      alert('Für diese einzelne HTML-Datei ist kein eigener Service Worker eingerichtet. Ein Cache-Löschen wäre daher wirkungslos und könnte andere Websites beeinträchtigen. Für zuverlässigen Offline-Start ist eine HTTPS-Bereitstellung mit separater Service-Worker-Datei nötig.');
     });
 
-    // 3. Alles restlos löschen
     document.getElementById('btnDeleteEverything').addEventListener('click', async () => {
       if (confirm('Möchtest du wirklich alle Dokumente, den Offline-Cache und alle Websitedaten restlos löschen?')) {
         pagesData = [];
@@ -977,23 +1021,13 @@
           const tx = db.transaction(STORE_NAME, 'readwrite');
           tx.objectStore(STORE_NAME).clear();
         } catch(e){}
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          for (const k of keys) { await caches.delete(k); }
-        }
-        if (navigator.serviceWorker) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const r of regs) { await r.unregister(); }
-        }
-        localStorage.clear();
-        sessionStorage.clear();
         refreshPagesUI();
         clearStorageModal.style.display = 'none';
         showToast('Alles vollständig gelöscht');
       }
     });
 
-    // PWA Info & Install Prompt Handling
+    // PWA Direkte Installation
     let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -1003,8 +1037,16 @@
     });
 
     document.getElementById('btnPwaInfo').addEventListener('click', () => {
-      document.getElementById('pwaInfoModal').style.display = 'flex';
-      safeRenderIcons();
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choice => {
+          if (choice.outcome === 'accepted') showToast('App wird installiert!');
+          deferredPrompt = null;
+        });
+      } else {
+        document.getElementById('pwaInfoModal').style.display = 'flex';
+        safeRenderIcons();
+      }
     });
 
     document.getElementById('btnClosePwaModal').addEventListener('click', () => {
@@ -1015,15 +1057,16 @@
       if (deferredPrompt) {
         deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
-          showToast('App wird installiert!');
-        }
+        if (choice.outcome === 'accepted') showToast('App wird installiert!');
         deferredPrompt = null;
         document.getElementById('pwaInfoModal').style.display = 'none';
+      } else {
+        showToast('Öffne dein Browser-Menü zum Hinzufügen');
       }
     });
 
     // State
+    let pagesData = [];
     let activePageIndex = null;
     let targetPageForNewScan = null;
     let currentRawImage = null;
@@ -1034,12 +1077,6 @@
     let activeVfFormat = 'a4';
 
     let croppedImageCanvas = document.createElement('canvas');
-    let warpedCanvas = document.createElement('canvas');
-    let warpedOriginalData = null;
-
-    // Standard ist IMMER 'original'
-    let activeFilter = 'original';
-    let filterParams = { bleach: 70, glare: 60, ink: 40, contrast: 15 };
     let corners = { tl: {x:0.08, y:0.08}, tr: {x:0.92, y:0.08}, br: {x:0.92, y:0.92}, bl: {x:0.08, y:0.92} };
     let exportPreset = 'medium';
 
@@ -1108,7 +1145,6 @@
 
     const layoutModal = document.getElementById('layoutModal');
     const sheetContainer = document.getElementById('sheetContainer');
-    const layoutPageTitle = document.getElementById('layoutPageTitle');
     const btnCloseLayoutModal = document.getElementById('btnCloseLayoutModal');
     const btnScanAnotherOntoPage = document.getElementById('btnScanAnotherOntoPage');
     const btnSaveLayoutPage = document.getElementById('btnSaveLayoutPage');
@@ -1124,6 +1160,18 @@
 
     const toastBadge = document.getElementById('toastBadge');
     const toastText = document.getElementById('toastText');
+
+    // 5 Schieberegler Inputs & Value-Displays
+    const sliderBrightness = document.getElementById('sliderBrightness');
+    const valBrightness = document.getElementById('valBrightness');
+    const sliderContrast = document.getElementById('sliderContrast');
+    const valContrast = document.getElementById('valContrast');
+    const sliderBleach = document.getElementById('sliderBleach');
+    const valBleach = document.getElementById('valBleach');
+    const sliderInk = document.getElementById('sliderInk');
+    const valInk = document.getElementById('valInk');
+    const sliderGlare = document.getElementById('sliderGlare');
+    const valGlare = document.getElementById('valGlare');
 
     const handles = {
       tl: document.getElementById('hTL'),
@@ -1169,9 +1217,11 @@
       showToast(`Weiße ${fmt.label}-Seite erstellt`);
     }
 
-    btnOpenNewBlankModal.addEventListener('click', () => {
-      blankFormatModal.style.display = 'flex';
-    });
+    if (btnOpenNewBlankModal) {
+      btnOpenNewBlankModal.addEventListener('click', () => {
+        blankFormatModal.style.display = 'flex';
+      });
+    }
 
     btnCloseBlankModal.addEventListener('click', () => {
       blankFormatModal.style.display = 'none';
@@ -1441,12 +1491,8 @@
       activeCropFormat = activeVfFormat;
       syncEditorFormatUI();
 
-      activeFilter = 'original';
-      document.querySelectorAll('.filter-card').forEach(c => {
-        c.classList.toggle('active', c.dataset.filter === 'original');
-      });
-
-      filterParams = { bleach: 70, glare: 60, ink: 40, contrast: 15 };
+      // Reset auf Original & Slider synchronisieren
+      applyFilterPreset('original');
 
       scanEditorModal.style.display = 'flex';
       goToStep('crop');
@@ -1479,7 +1525,7 @@
         cropControlsPanel.style.display = 'none';
         filterControlsPanel.style.display = 'flex';
 
-        // Intelligente Entzerrung oder exakter Formschnitt
+        // Intelligente Begradigung ohne Verziehen
         processSmartCrop(currentRawImage, corners);
         renderPerfectionFilter();
       }
@@ -1625,7 +1671,7 @@
       });
     }
 
-    // Smarte Lupe: Stabil oben, wechselt lateral links/rechts
+    // Smarte Lupe: Optimaler 1.45x Zoom (kein Pixelbrei)
     function updateLoupe(normX, normY, clientX) {
       if (!currentRawImage) return;
 
@@ -1634,6 +1680,7 @@
       const winW = window.innerWidth;
       const isRight = clientX > winW / 2;
 
+      // Wechselt sauber lateral links/rechts (verdeckt den Finger nie!)
       if (isRight) {
         cropLoupe.style.left = '20px';
         cropLoupe.style.right = 'auto';
@@ -1644,7 +1691,7 @@
 
       const srcX = normX * currentRawImage.width;
       const srcY = normY * currentRawImage.height;
-      const zoomSize = 50;
+      const zoomSize = 90; // Größerer Ausschnitt = 1.45x Zoom (scharfe Kanten ohne Pixelraster!)
 
       loupeCtx.clearRect(0, 0, 130, 130);
       loupeCtx.drawImage(
@@ -1676,7 +1723,7 @@
       return inside;
     }
 
-    // Verschieben des Rahmens
+    // Verschieben des gesamten Rahmens
     let isMovingEntireBox = false;
     let boxMoveStart = { x: 0, y: 0 };
     let initialCornersState = null;
@@ -1729,6 +1776,7 @@
       }
     });
 
+    // Ecken anfassen mit Lupe
     Object.keys(handles).forEach(key => {
       const handle = handles[key];
       let isDragging = false;
@@ -1775,7 +1823,7 @@
     });
 
     // ----------------------------------------------------
-    // 4. INTELLIGENTE ZUSCHNITTS-LOGIK: RECHTECK VS. FORMSCHNITT
+    // 4. INTELLIGENTER ZUSCHNITT OHNE VERZERREN
     // ----------------------------------------------------
     function getPerspectiveTransform(src, dst) {
       let a = [], b = [];
@@ -1810,7 +1858,6 @@
       return [...x, 1];
     }
 
-    // Prüft Geometrie: Ist die Auswahl annähernd rechteckig?
     function processSmartCrop(sourceImg, srcCorners) {
       const pTL = { x: srcCorners.tl.x * sourceImg.width, y: srcCorners.tl.y * sourceImg.height };
       const pTR = { x: srcCorners.tr.x * sourceImg.width, y: srcCorners.tr.y * sourceImg.height };
@@ -1831,11 +1878,9 @@
       const aBR = calcAngle(pTR, pBR, pBL);
       const aBL = calcAngle(pBR, pBL, pTL);
 
-      // Wenn die Winkel alle grob rechtwinklig sind (72° bis 108°): Begradigen als Rechteck!
-      const isRoughlyRectangular = [aTL, aTR, aBR, aBL].every(a => a >= 72 && a <= 108);
+      const isRoughlyRectangular = [aTL, aTR, aBR, aBL].every(a => a >= 70 && a <= 110);
 
       if (isRoughlyRectangular) {
-        // Perspektivische Begradigung ohne jede Stauchung
         const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
         const outWidth = Math.round(Math.max(dist(pTL, pTR), dist(pBL, pBR)));
         const outHeight = Math.round(Math.max(dist(pTL, pBL), dist(pTR, pBR)));
@@ -1876,7 +1921,6 @@
         }
         dCtx.putImageData(dstData, 0, 0);
       } else {
-        // Nicht rechtwinklig: Form exakt beibehalten (Polygon-Maskierung auf weißem Grund)
         const pts = [pTL, pTR, pBR, pBL];
         const minX = Math.floor(Math.min(...pts.map(p => p.x)));
         const maxX = Math.ceil(Math.max(...pts.map(p => p.x)));
@@ -1905,36 +1949,67 @@
       }
     }
 
+    // Preset anwenden & Slider synchronisieren
+    function applyFilterPreset(presetKey) {
+      activeFilter = presetKey;
+      filterParams = { ...FILTER_PRESETS[presetKey] };
+
+      sliderBrightness.value = filterParams.brightness;
+      valBrightness.innerText = filterParams.brightness;
+
+      sliderContrast.value = filterParams.contrast;
+      valContrast.innerText = filterParams.contrast;
+
+      sliderBleach.value = filterParams.bleach;
+      valBleach.innerText = filterParams.bleach;
+
+      sliderInk.value = filterParams.ink;
+      valInk.innerText = filterParams.ink;
+
+      sliderGlare.value = filterParams.glare;
+      valGlare.innerText = filterParams.glare;
+
+      document.querySelectorAll('.filter-card').forEach(c => {
+        c.classList.toggle('active', c.dataset.filter === presetKey);
+      });
+
+      renderPerfectionFilter();
+    }
+
     document.querySelectorAll('.filter-card').forEach(card => {
       card.addEventListener('click', () => {
-        document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        activeFilter = card.dataset.filter;
-        renderPerfectionFilter();
+        applyFilterPreset(card.dataset.filter);
       });
     });
 
-    const sliderBleach = document.getElementById('sliderBleach');
-    const sliderGlare = document.getElementById('sliderGlare');
-    const sliderInk = document.getElementById('sliderInk');
-    const sliderContrast = document.getElementById('sliderContrast');
-
-    [sliderBleach, sliderGlare, sliderInk, sliderContrast].forEach(sl => {
-      sl.addEventListener('input', () => {
-        filterParams.bleach = parseInt(sliderBleach.value);
-        filterParams.glare = parseInt(sliderGlare.value);
-        filterParams.ink = parseInt(sliderInk.value);
-        filterParams.contrast = parseInt(sliderContrast.value);
-
-        document.getElementById('valBleach').innerText = filterParams.bleach;
-        document.getElementById('valGlare').innerText = filterParams.glare;
-        document.getElementById('valInk').innerText = filterParams.ink;
-        document.getElementById('valContrast').innerText = filterParams.contrast;
-
-        renderPerfectionFilter();
-      });
+    // Event Listener für alle 5 Schieberegler
+    sliderBrightness.addEventListener('input', () => {
+      filterParams.brightness = parseInt(sliderBrightness.value);
+      valBrightness.innerText = filterParams.brightness;
+      renderPerfectionFilter();
+    });
+    sliderContrast.addEventListener('input', () => {
+      filterParams.contrast = parseInt(sliderContrast.value);
+      valContrast.innerText = filterParams.contrast;
+      renderPerfectionFilter();
+    });
+    sliderBleach.addEventListener('input', () => {
+      filterParams.bleach = parseInt(sliderBleach.value);
+      valBleach.innerText = filterParams.bleach;
+      renderPerfectionFilter();
+    });
+    sliderInk.addEventListener('input', () => {
+      filterParams.ink = parseInt(sliderInk.value);
+      valInk.innerText = filterParams.ink;
+      renderPerfectionFilter();
+    });
+    sliderGlare.addEventListener('input', () => {
+      filterParams.glare = parseInt(sliderGlare.value);
+      valGlare.innerText = filterParams.glare;
+      renderPerfectionFilter();
     });
 
+    // FILTER-ENGINE: Helligkeit, Kontrast, Glanz & kein Negativ
     function renderPerfectionFilter() {
       const w = croppedImageCanvas.width;
       const h = croppedImageCanvas.height;
@@ -1942,14 +2017,7 @@
 
       canvasFilterPreview.width = w;
       canvasFilterPreview.height = h;
-
       const ctx = canvasFilterPreview.getContext('2d');
-
-      // 100% UNVERÄNDERTES ORIGINAL
-      if (activeFilter === 'original') {
-        ctx.drawImage(croppedImageCanvas, 0, 0);
-        return;
-      }
 
       const imgData = croppedImageCanvas.getContext('2d').getImageData(0, 0, w, h);
       const src = imgData.data;
@@ -1957,11 +2025,36 @@
       const dst = outData.data;
       const len = src.length;
 
+      const bright = filterParams.brightness * 1.5;
+      const contrast = filterParams.contrast;
+      const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+      // 100% UNVERÄNDERTES ORIGINAL (außer Helligkeit/Kontrast manuell verstellt)
+      if (activeFilter === 'original') {
+        for (let i = 0; i < len; i += 4) {
+          let r = src[i] + bright;
+          let g = src[i+1] + bright;
+          let b = src[i+2] + bright;
+          if (contrast !== 0) {
+            r = cFactor * (r - 128) + 128;
+            g = cFactor * (g - 128) + 128;
+            b = cFactor * (b - 128) + 128;
+          }
+          dst[i] = Math.max(0, Math.min(255, r));
+          dst[i+1] = Math.max(0, Math.min(255, g));
+          dst[i+2] = Math.max(0, Math.min(255, b));
+          dst[i+3] = 255;
+        }
+        ctx.putImageData(outData, 0, 0);
+        return;
+      }
+
       // SAUVOLA S/W (Text-Dokument)
       if (activeFilter === 'bw') {
         const gray = new Uint8Array(w * h);
         for (let i = 0, j = 0; i < len; i += 4, j++) {
-          gray[j] = (src[i] * 77 + src[i+1] * 150 + src[i+2] * 29) >> 8;
+          let val = (src[i] * 77 + src[i+1] * 150 + src[i+2] * 29) >> 8;
+          gray[j] = Math.max(0, Math.min(255, val + bright));
         }
 
         const intSum = new Uint32Array((w + 1) * (h + 1));
@@ -1996,15 +2089,8 @@
             const x2 = Math.min(w, x + halfWin);
             const count = (x2 - x1) * (y2 - y1);
 
-            const sum = intSum[y2 * (w + 1) + x2] 
-                      - intSum[y1 * (w + 1) + x2] 
-                      - intSum[y2 * (w + 1) + x1] 
-                      + intSum[y1 * (w + 1) + x1];
-
-            const sqSum = intSq[y2 * (w + 1) + x2] 
-                        - intSq[y1 * (w + 1) + x2] 
-                        - intSq[y2 * (w + 1) + x1] 
-                        + intSq[y1 * (w + 1) + x1];
+            const sum = intSum[y2 * (w + 1) + x2] - intSum[y1 * (w + 1) + x2] - intSum[y2 * (w + 1) + x1] + intSum[y1 * (w + 1) + x1];
+            const sqSum = intSq[y2 * (w + 1) + x2] - intSq[y1 * (w + 1) + x2] - intSq[y2 * (w + 1) + x1] + intSq[y1 * (w + 1) + x1];
 
             const mean = sum / count;
             const variance = (sqSum - ((sum * sum) / count)) / count;
@@ -2022,7 +2108,7 @@
         return;
       }
 
-      // FARB-SCAN PRO / BLITZLICHT-DÄMPFUNG
+      // FARB-SCAN PRO / BLITZLICHT
       const bgSmall = document.createElement('canvas');
       bgSmall.width = 36; bgSmall.height = Math.round(36 * (h / w));
       const bgCtx = bgSmall.getContext('2d');
@@ -2038,11 +2124,12 @@
       const bleachStrength = filterParams.bleach / 50;
       const glareFactor = filterParams.glare / 100;
       const inkDarken = 1 - (filterParams.ink / 100) * 0.45;
-      const contrast = filterParams.contrast;
-      const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
       for (let i = 0; i < len; i += 4) {
-        let r = src[i], g = src[i+1], b = src[i+2];
+        let r = src[i];
+        let g = src[i+1];
+        let b = src[i+2];
+
         const bgLuma = Math.max(40, (bgData[i] * 77 + bgData[i+1] * 150 + bgData[i+2] * 29) >> 8);
         const origLuma = (r * 77 + g * 150 + b * 29) >> 8;
 
@@ -2057,9 +2144,9 @@
 
         if (activeFilter === 'magic' || activeFilter === 'antiglare') {
           const gain = (255 / bgLuma) * bleachStrength;
-          let nr = r * gain;
-          let ng = g * gain;
-          let nb = b * gain;
+          let nr = r * gain + bright;
+          let ng = g * gain + bright;
+          let nb = b * gain + bright;
 
           const nLuma = (nr * 77 + ng * 150 + nb * 29) >> 8;
 
@@ -2086,20 +2173,22 @@
           dst[i+3] = 255;
         } else if (activeFilter === 'ink') {
           const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+          let fr = r + bright, fg = g + bright, fb = b + bright;
           if (chroma > 18) {
-            dst[i] = Math.min(255, r * 1.25);
-            dst[i+1] = Math.min(255, g * 1.25);
-            dst[i+2] = Math.min(255, b * 1.25);
+            dst[i] = Math.min(255, fr * 1.25);
+            dst[i+1] = Math.min(255, fg * 1.25);
+            dst[i+2] = Math.min(255, fb * 1.25);
           } else if (origLuma > 180) {
             dst[i] = dst[i+1] = dst[i+2] = 255;
           } else {
-            dst[i] = r * inkDarken;
-            dst[i+1] = g * inkDarken;
-            dst[i+2] = b * inkDarken;
+            dst[i] = fr * inkDarken;
+            dst[i+1] = fg * inkDarken;
+            dst[i+2] = fb * inkDarken;
           }
           dst[i+3] = 255;
         } else if (activeFilter === 'gray') {
-          let grayVal = origLuma > (bgLuma - 25) ? 255 : origLuma * inkDarken;
+          let grayVal = origLuma > (bgLuma - 25) ? 255 : (origLuma + bright) * inkDarken;
+          if (contrast !== 0) grayVal = cFactor * (grayVal - 128) + 128;
           dst[i] = dst[i+1] = dst[i+2] = Math.max(0, Math.min(255, grayVal));
           dst[i+3] = 255;
         }
@@ -2113,7 +2202,7 @@
     });
 
     // ----------------------------------------------------
-    // 5. SPEICHER-DIALOG (3 PFADE)
+    // 5. SPEICHER-DIALOG (SOFORTIGE SYNCHRONE ANZEIGE)
     // ----------------------------------------------------
     let pendingScanDataUrl = null;
     let pendingScanAspect = 1;
@@ -2148,7 +2237,7 @@
         formatKey: 'a4',
         previewUrl: pendingScanDataUrl,
         items: [{
-          id: 'item_' + Date.now(),
+          id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
           dataUrl: pendingScanDataUrl,
           x: 0, y: 0, w: 100, h: 100,
           aspect: pendingScanAspect,
@@ -2159,7 +2248,7 @@
 
       pagesData.push(newPage);
       savePagesToStorage();
-      refreshPagesUI();
+      refreshPagesUI(); // Sofort sichtbar!
       showToast('Als Vollseite gespeichert!');
     });
 
@@ -2184,13 +2273,51 @@
       pagesData.forEach((p, idx) => {
         const opt = document.createElement('option');
         opt.value = idx;
-        opt.innerText = `Seite ${idx + 1} (${FORMAT_PRESETS[p.formatKey].label})`;
+        opt.innerText = `Seite ${idx + 1} (${FORMAT_PRESETS[p.formatKey || 'a4'].label})`;
         selectTargetSheet.appendChild(opt);
       });
 
+      updateTargetSheetPreview();
       existingPagePickerModal.style.display = 'flex';
       safeRenderIcons();
     });
+
+    function updateTargetSheetPreview() {
+      const idx = Number(selectTargetSheet.value);
+      const page = pagesData[idx];
+      const img = document.getElementById('targetSheetPreview');
+      if (!page || !img) return;
+      img.src = page.previewUrl || '';
+      img.style.display = page.previewUrl ? 'block' : 'none';
+      if (page.items && page.items.length) {
+        renderPagePreviewDataUrl(page).then(url => {
+          if (Number(selectTargetSheet.value) === idx) { img.src = url; img.style.display = 'block'; }
+        }).catch(()=>{});
+      }
+    }
+    selectTargetSheet.addEventListener('change', updateTargetSheetPreview);
+
+    async function renderPagePreviewDataUrl(page) {
+      const fmt = FORMAT_PRESETS[page.formatKey || 'a4'] || FORMAT_PRESETS.a4;
+      const cvs = document.createElement('canvas');
+      cvs.width = Math.round(fmt.wPt * 0.8);
+      cvs.height = Math.round(fmt.hPt * 0.8);
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cvs.width,cvs.height);
+      for (const it of (page.items || [])) {
+        if (!it.dataUrl) continue;
+        await new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => {
+            const x=it.x/100*cvs.width, y=it.y/100*cvs.height, w=it.w/100*cvs.width, h=it.h/100*cvs.height;
+            ctx.save(); ctx.translate(x+w/2,y+h/2); ctx.rotate((it.rotation||0)*Math.PI/180);
+            ctx.drawImage(img,-w/2,-h/2,w,h); ctx.restore(); resolve();
+          };
+          img.onerror = resolve; img.src=it.dataUrl;
+        });
+      }
+      return cvs.toDataURL('image/jpeg',0.86);
+    }
 
     btnCloseExistingPickerModal.addEventListener('click', () => {
       existingPagePickerModal.style.display = 'none';
@@ -2255,7 +2382,7 @@
       }
 
       page.items.push({
-        id: 'item_' + Date.now(),
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
         dataUrl: dataUrl,
         x: (100 - defaultW) / 2,
         y: newY,
@@ -2269,14 +2396,13 @@
     }
 
     // ----------------------------------------------------
-    // 6. BEARBEITEN-EDITOR (MÖGLICHKEIT ZUM VERSCHIEBEN & DREHEN)
+    // 6. BEARBEITEN-EDITOR
     // ----------------------------------------------------
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
       const page = pagesData[pageIndex];
       const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
 
-      layoutPageTitle.innerText = `Bearbeiten (${fmt.label})`;
       lblCurrentSheetFormat.innerText = `Format: ${fmt.label} ▾`;
       layoutModal.style.display = 'flex';
 
@@ -2413,7 +2539,7 @@
       const item = page.items.find(i => i.id === itemId);
       if (item) {
         const copy = JSON.parse(JSON.stringify(item));
-        copy.id = 'item_' + Date.now();
+        copy.id = 'item_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
         copy.y = Math.min(80, copy.y + 8);
         copy.x = Math.min(80, copy.x + 5);
         copy.locked = false;
@@ -2521,7 +2647,6 @@
           if (!isResizing) return;
           isResizing = false;
           try { handle.releasePointerCapture(e.pointerId); } catch(err){}
-          renderSheetItems();
         };
 
         handle.addEventListener('pointerup', onResizeEnd);
@@ -2546,7 +2671,7 @@
       cvs.height = Math.round(fmt.hPt * 2);
       const ctx = cvs.getContext('2d');
 
-      ctx.fillStyle = '#ffffff'; // Garantiert reinweiß
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, cvs.width, cvs.height);
 
       for (const it of page.items) {
@@ -2577,7 +2702,7 @@
     }
 
     // ----------------------------------------------------
-    // 7. SEITENVERWALTUNG & ÜBERSICHT (BEARBEITEN-MODUS)
+    // 7. SEITENVERWALTUNG & SOFORT-RENDER
     // ----------------------------------------------------
     function refreshPagesUI() {
       pagesGrid.innerHTML = '';
@@ -2605,19 +2730,19 @@
               <i data-lucide="edit-3" style="width:15px;"></i> Bearbeiten
             </div>
           </div>
-          <div class="card-info">
-            <div class="card-nav">
-              <button class="card-nav-btn" onclick="event.stopPropagation(); movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Nach links">←</button>
-              <button class="card-nav-btn" onclick="event.stopPropagation(); movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Nach rechts">→</button>
+          <div class="card-info" onclick="openLayoutEditor(${idx})">
+            <div class="card-nav" onclick="event.stopPropagation();">
+              <button class="card-nav-btn" onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Nach links">←</button>
+              <button class="card-nav-btn" onclick="movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Nach rechts">→</button>
             </div>
-            <div class="card-handle" onclick="openLayoutEditor(${idx})">
+            <div class="card-handle">
               <span>⠿</span> Seite ${idx + 1}
             </div>
-            <div style="display:flex; gap:0.25rem;">
-              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="event.stopPropagation(); downloadSingleImage(${idx})" title="Bild herunterladen">
+            <div style="display:flex; gap:0.25rem;" onclick="event.stopPropagation();">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="downloadSingleImage(${idx})" title="Bild herunterladen">
                 <i data-lucide="image-down" style="width:13px;height:13px;"></i>
               </button>
-              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="event.stopPropagation(); removePage(${idx})" title="Löschen">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="removePage(${idx})" title="Löschen">
                 <i data-lucide="trash-2" style="width:13px;height:13px;color:var(--danger);"></i>
               </button>
             </div>
@@ -2652,7 +2777,7 @@
     };
 
     // ----------------------------------------------------
-    // 8. PDF-EXPORT (100% ZUVERLÄSSIG)
+    // 8. PDF-EXPORT
     // ----------------------------------------------------
     btnOpenExportModal.addEventListener('click', () => {
       const now = new Date();
@@ -2709,6 +2834,9 @@
       safeRenderIcons();
 
       try {
+        if (!window.PDFLib || !PDFLib.PDFDocument) {
+          throw new Error('Die PDF-Bibliothek ist nicht geladen. Offline funktionieren Scannen und Bearbeiten; für PDF-Export muss die Bibliothek zuvor online geladen oder lokal mit ausgeliefert werden.');
+        }
         const pdfDoc = await PDFLib.PDFDocument.create();
 
         let maxDim = 1600;
