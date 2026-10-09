@@ -13,7 +13,7 @@
   <meta name="theme-color" content="#121826" />
 
   <!-- Dynamisches Inline-Manifest für Standalone / Fullscreen PWA -->
-  <link rel="manifest" id="dynamicManifest" />
+  <link rel="manifest" href="manifest.webmanifest" />
 
   <!-- Bibliotheken (100% lokal im Browser) -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -36,12 +36,12 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     html, body {
       overscroll-behavior-y: contain;
-      background-color: var(--bg); color: var(--text-main); min-height: 100vh;
+      background-color: var(--bg); color: var(--text-main); min-height: 100vh; min-height: 100dvh;
       display: flex; justify-content: center; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     }
 
     .app-shell {
-      width: 100%; max-width: 560px; min-height: 100vh; background: var(--bg);
+      width: 100%; max-width: 560px; min-height: 100vh; min-height: 100dvh; background: var(--bg);
       display: flex; flex-direction: column; position: relative;
       border-left: 1px solid rgba(255,255,255,0.06); border-right: 1px solid rgba(255,255,255,0.06);
     }
@@ -49,7 +49,7 @@
     header {
       background: rgba(18, 24, 38, 0.94); backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--surface-border); position: sticky; top: 0; z-index: 40;
-      padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+      padding: calc(0.65rem + env(safe-area-inset-top, 0px)) 1rem 0.65rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
     }
     .brand-box { display: flex; flex-direction: column; }
     .brand { display: flex; align-items: center; gap: 0.45rem; font-weight: 700; font-size: 1.05rem; white-space: nowrap; }
@@ -133,10 +133,10 @@
 
     /* Bottom Bar */
     .mobile-bottom-bar {
-      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: 0; bottom: env(safe-area-inset-bottom, 0px); left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 560px; background: rgba(18, 24, 38, 0.95);
       backdrop-filter: blur(16px); border-top: 1px solid var(--surface-border);
-      padding: 0.65rem 1.5rem; display: flex; justify-content: space-between; align-items: center; z-index: 45;
+      padding: 0.65rem 1.5rem calc(0.65rem + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: space-between; align-items: center; z-index: 45;
     }
     .floating-shutter-trigger {
       width: 58px; height: 58px; border-radius: 50%; background: var(--primary);
@@ -155,12 +155,12 @@
     .modal-fullscreen { display: none; position: fixed; inset: 0; background: #060911; flex-direction: column; }
     .modal-dialog {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-      backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 1rem;
+      backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain;
     }
     .modal-content {
       background: var(--surface); border: 1px solid var(--surface-border); border-radius: 18px;
       max-width: 480px; width: 100%; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6); max-height: 90vh; max-height: calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain;
     }
 
     /* Kamera */
@@ -276,7 +276,7 @@
     }
     .canvas-sheet {
       background: #ffffff !important; position: relative;
-      width: min(100%, calc((100dvh - 170px) * 0.707)); height: auto; aspect-ratio: 595.28 / 841.89; max-width: 460px; max-height: calc(100dvh - 150px);
+      width: min(100%, calc((100dvh - 170px) * 0.707)); height: auto; aspect-ratio: 595.28 / 841.89; max-width: 460px; max-height: calc(100dvh - 190px);
       box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 4px; overflow: hidden;
       touch-action: none; user-select: none;
     }
@@ -346,7 +346,7 @@
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Build: 2026-10-09 22:25:00</span>
+        <span class="version-stamp">Build: 2026-10-09 23:10:00</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Speicher & Cache verwalten">
@@ -460,10 +460,11 @@
         <button class="btn" id="btnTriggerPwaInstall" style="width:100%; justify-content:center; padding:0.75rem; font-size:0.9rem;">
           <i data-lucide="download"></i> Jetzt als App installieren
         </button>
+        <div id="pwaInstallHelp" style="font-size:0.78rem; color:var(--text-sub); line-height:1.45;"></div>
 
         <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 0.75rem; font-size: 0.78rem; color: #fbbf24;">
           <strong>💾 Lokaler Speicher & Offline-Hinweis:</strong><br>
-          Seiten werden lokal in IndexedDB gespeichert. Offline-Start der App ist nur nach Bereitstellung über HTTPS mit korrekt eingerichteter Service-Worker-Datei zuverlässig möglich; eine einzelne HTML-Datei (file://) kann sich nicht selbst als Offline-App installieren. 
+          Seiten werden lokal in IndexedDB gespeichert. Der direkte Installationsdialog und Offline-Start funktionieren, wenn die Dateien gemeinsam über HTTPS bereitgestellt werden. Eine einzelne HTML-Datei, die direkt über file:// geöffnet wird, kann nicht als App installiert werden. 
           <br><br>
           <strong>Wichtig:</strong> Browserdaten-Löschen kann gespeicherte Dokumente entfernen. Bereits gespeicherte Seiten lassen sich offline bearbeiten, solange dieselbe Browser-Origin und IndexedDB verfügbar sind.
         </div>
@@ -887,22 +888,16 @@
     let filterParams = { ...FILTER_PRESETS.original };
 
     // ====================================================
-    // PWA INLINE MANIFEST (VOLLBILD APP)
+    // PWA INSTALLATION & OFFLINE-CACHE
+    // Installation ist nur über HTTPS (oder localhost) möglich.
+    // Der Browser zeigt den nativen Installationsdialog, sobald die
+    // PWA-Kriterien erfüllt sind und beforeinstallprompt ausgelöst wurde.
     // ====================================================
-    const pwaIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="128" fill="#121826"/><path d="M128 160h256v192H128z" fill="none" stroke="#3b82f6" stroke-width="32" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#3b82f6"/></svg>`;
-    const pwaIconUrl = "data:image/svg+xml;base64," + btoa(pwaIconSvg);
-    const pwaManifest = {
-      name: "SmartScan Pro",
-      short_name: "SmartScan",
-      start_url: window.location.href,
-      display: "standalone",
-      display_override: ["fullscreen", "standalone"],
-      background_color: "#090d16",
-      theme_color: "#121826",
-      icons: [{ src: pwaIconUrl, sizes: "512x512", type: "image/svg+xml" }]
-    };
-    const manifestBlob = new Blob([JSON.stringify(pwaManifest)], { type: "application/manifest+json" });
-    document.getElementById("dynamicManifest").setAttribute("href", URL.createObjectURL(manifestBlob));
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service Worker konnte nicht registriert werden:', err));
+      });
+    }
 
     // ====================================================
     // LOKALE INDEXED-DB PERSISTENZ (Dauerhafter Speicher)
@@ -1027,43 +1022,79 @@
       }
     });
 
-    // PWA Direkte Installation
+    // PWA direkte Installation: nativen Browserdialog bevorzugen.
     let deferredPrompt = null;
+    const installButton = document.getElementById('btnTriggerPwaInstall');
+    const pwaModal = document.getElementById('pwaInfoModal');
+    const installHelp = document.getElementById('pwaInstallHelp');
+
+    function showInstallFallback() {
+      if (installHelp) {
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (isStandalone) installHelp.textContent = 'SmartScan Pro ist bereits als App installiert.';
+        else if (location.protocol === 'file:') installHelp.textContent = 'Diese Datei wurde direkt geöffnet. Für den nativen Installationsdialog muss SmartScan Pro über eine HTTPS-Adresse bereitgestellt werden; aus einer lokalen HTML-Datei kann der Browser keine App installieren.';
+        else if (!window.isSecureContext) installHelp.textContent = 'Der Browser erlaubt die App-Installation nur über eine sichere HTTPS-Verbindung.';
+        else if (isIOS) installHelp.textContent = 'iPhone/iPad: Safari öffnen, auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen. iOS stellt keinen programmatischen Installationsdialog bereit.';
+        else installHelp.textContent = 'Der Browser bietet gerade keinen direkten Installationsdialog an. Prüfe, ob die Seite über HTTPS geöffnet ist und der Browser „App installieren“ unterstützt. Falls verfügbar, findest du „Installieren“ auch im Browser-Menü.';
+      }
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      const btn = document.getElementById('btnTriggerPwaInstall');
-      if (btn) btn.style.display = 'inline-flex';
-    });
-
-    document.getElementById('btnPwaInfo').addEventListener('click', () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(choice => {
-          if (choice.outcome === 'accepted') showToast('App wird installiert!');
-          deferredPrompt = null;
-        });
-      } else {
-        document.getElementById('pwaInfoModal').style.display = 'flex';
+      if (installButton) {
+        installButton.style.display = 'inline-flex';
+        installButton.innerHTML = '<i data-lucide="download"></i> Jetzt als App installieren';
         safeRenderIcons();
       }
     });
 
-    document.getElementById('btnClosePwaModal').addEventListener('click', () => {
-      document.getElementById('pwaInfoModal').style.display = 'none';
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      showToast('SmartScan Pro wurde installiert!');
+      if (installHelp) installHelp.textContent = 'SmartScan Pro wurde erfolgreich installiert.';
     });
 
-    document.getElementById('btnTriggerPwaInstall').addEventListener('click', async () => {
+    document.getElementById('btnPwaInfo').addEventListener('click', async () => {
       if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') showToast('App wird installiert!');
-        deferredPrompt = null;
-        document.getElementById('pwaInfoModal').style.display = 'none';
+        await triggerNativeInstall();
       } else {
-        showToast('Öffne dein Browser-Menü zum Hinzufügen');
+        pwaModal.style.display = 'flex';
+        showInstallFallback();
+        safeRenderIcons();
       }
     });
+
+    async function triggerNativeInstall() {
+      if (!deferredPrompt) {
+        showInstallFallback();
+        pwaModal.style.display = 'flex';
+        return;
+      }
+      const promptEvent = deferredPrompt;
+      deferredPrompt = null;
+      try {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice.outcome === 'accepted') {
+          showToast('App wird installiert!');
+          pwaModal.style.display = 'none';
+        } else {
+          showToast('Installation nicht abgeschlossen');
+        }
+      } catch (err) {
+        console.warn('Installationsdialog konnte nicht geöffnet werden:', err);
+        showInstallFallback();
+        pwaModal.style.display = 'flex';
+      }
+    }
+
+    document.getElementById('btnClosePwaModal').addEventListener('click', () => {
+      pwaModal.style.display = 'none';
+    });
+
+    installButton.addEventListener('click', triggerNativeInstall);
 
     // State
     let pagesData = [];
