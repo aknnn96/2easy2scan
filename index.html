@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>SmartScan Pro</title>
 
-  <!-- PWA Metatags für native App-Optik am Smartphone -->
+  <!-- PWA Metatags für native App-Darstellung am Smartphone -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -36,6 +36,7 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     html, body {
+      overscroll-behavior-y: none;
       background-color: var(--bg); color: var(--text-main); min-height: 100vh;
       display: flex; justify-content: center; overflow-x: hidden;
     }
@@ -66,6 +67,8 @@
     .btn:active { transform: scale(0.96); }
     .btn-secondary { background: var(--surface-border); color: var(--text-main); }
     .btn-secondary:hover { background: #2c3b53; }
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
     .btn-icon { width: 36px; height: 36px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -88,7 +91,7 @@
     }
     .empty-state i { color: var(--primary); width: 44px; height: 44px; margin-bottom: 0.75rem; opacity: 0.85; }
 
-    /* Grid & Cards: Touch-Action pan-y erlaubt butterweiches Scrollen */
+    /* Grid & Cards mit touch-action für unterbrechungsfreies Scrollen */
     .pages-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem;
       touch-action: pan-y !important;
@@ -131,7 +134,7 @@
     .card-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
     .card-handle { cursor: grab; display: flex; align-items: center; gap: 0.2rem; color: var(--text-sub); font-size: 0.78rem; font-weight: 600; }
 
-    /* Aufgeräumte Mobile Bottom Bar */
+    /* Bottom Bar */
     .mobile-bottom-bar {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 560px; background: rgba(18, 24, 38, 0.95);
@@ -145,7 +148,7 @@
     }
     .floating-shutter-trigger:active { transform: scale(0.92); }
 
-    /* Modale Ebenen */
+    /* Modale Z-Index Ebenen */
     #layoutModal     { z-index: 100; }
     #scanEditorModal { z-index: 150; }
     #cameraModal     { z-index: 250 !important; }
@@ -227,12 +230,12 @@
       transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none;
     }
 
-    /* Smarte Lupe */
+    /* Smarte Lupe: Stabil oben, wechselt lateral links/rechts */
     .crop-loupe {
       position: fixed; width: 130px; height: 130px; border-radius: 50%;
       border: 3.5px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.9);
       overflow: hidden; pointer-events: none; z-index: 400; display: none; background: #000;
-      transition: top 0.15s ease, left 0.15s ease, right 0.15s ease, bottom 0.15s ease;
+      top: 75px; transition: left 0.12s ease, right 0.12s ease;
     }
     .crop-loupe canvas { width: 100%; height: 100%; display: block; }
     .loupe-crosshair {
@@ -337,9 +340,12 @@
           <i data-lucide="scan-line"></i>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Build: 2026-10-09 21:33:19</span>
+        <span class="version-stamp">Build: 2026-10-09 21:39:50</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
+        <button class="btn btn-danger btn-icon" id="btnClearAllStorage" title="Alles löschen & Cache leeren">
+          <i data-lucide="trash-2"></i>
+        </button>
         <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="PDF Speichern">
           <i data-lucide="file-down"></i>
         </button>
@@ -354,7 +360,7 @@
       <div class="env-notice" id="envNotice" style="display: none;">
         <i data-lucide="info" style="width: 16px; height: 16px;"></i>
         <div>
-          <strong>Lokale Datei erkannt:</strong> Mobile Browser sperren Live-Video ohne HTTPS. Beim Klick auf den Auslöser öffnet sich automatisch deine native Smartphone-Kamera!
+          <strong>Lokale Datei:</strong> Browser sperren Live-Kameras ohne HTTPS. Beim Auslösen öffnet sich automatisch deine native Smartphone-Kamera!
         </div>
       </div>
 
@@ -368,9 +374,13 @@
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
     </main>
 
-    <!-- Bottom Bar -->
+    <!-- Aufgeräumte Mobile Bottom Bar -->
     <div class="mobile-bottom-bar">
-      <div style="width: 80px;"></div>
+      <!-- App / Offline Info Button links neben der Kamera -->
+      <button class="btn btn-secondary" id="btnPwaInfo" style="padding: 0.45rem 0.75rem;" title="App installieren & Offline-Info">
+        <i data-lucide="smartphone"></i>
+        <span>App / Offline</span>
+      </button>
 
       <div class="floating-shutter-trigger" id="btnStartScan" title="Scan starten">
         <i data-lucide="camera" style="width: 26px; height: 26px;"></i>
@@ -382,6 +392,40 @@
         <span>Galerie</span>
         <input type="file" id="bottomGalleryInput" accept="image/*" style="display:none;" />
       </label>
+    </div>
+  </div>
+
+  <!-- PWA & Offline Info Modal -->
+  <div id="pwaInfoModal" class="modal-dialog">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; display:flex; align-items:center; gap:0.4rem;">
+          <i data-lucide="smartphone" style="color:var(--primary); width:18px;"></i>
+          App & Offline-Funktion
+        </h3>
+        <button class="btn btn-secondary btn-icon" id="btnClosePwaModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
+      </div>
+
+      <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.45; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="background:#0b1120; padding:0.75rem; border-radius:10px; border:1px solid var(--surface-border);">
+          <strong style="color:var(--text-main); display:block; margin-bottom:0.25rem;">📱 Als echte App installieren:</strong>
+          <span id="pwaInstallInstructions">
+            <strong>Chrome / Android:</strong> Tippe im Browser-Menü (3 Punkte oben rechts) auf <em>„App installieren“</em> oder <em>„Zum Startbildschirm hinzufügen“</em>.<br><br>
+            <strong>iOS / Safari:</strong> Tippe unten auf das <em>Teilen-Symbol</em> und wähle <em>„Zum Home-Bildschirm“</em>.
+          </span>
+        </div>
+
+        <button class="btn" id="btnTriggerPwaInstall" style="display:none; justify-content:center; padding:0.65rem;">
+          <i data-lucide="download"></i> Jetzt als App installieren
+        </button>
+
+        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 0.75rem; font-size: 0.78rem; color: #fbbf24;">
+          <strong>💾 Lokaler Speicher & Offline-Hinweis:</strong><br>
+          Alle Seiten werden automatisch im lokalen Browser-Speicher (IndexedDB) gespeichert und bleiben auch beim Neuladen erhalten. 
+          <br><br>
+          <strong>Wichtig:</strong> Wenn du den Browser-Cache / Websitedaten löschst (z. B. über „Alles löschen“), werden alle gespeicherten Dokumente entfernt!
+        </div>
+      </div>
     </div>
   </div>
 
@@ -401,6 +445,7 @@
       <div class="camera-top-bar">
         <button class="btn btn-secondary btn-icon" id="btnCloseCamera"><i data-lucide="x"></i></button>
 
+        <!-- Echte Papierformate -->
         <div class="formats-scroll-bar" id="camFormatsBar">
           <button class="format-pill active" data-cfmt="a4">📄 A4</button>
           <button class="format-pill" data-cfmt="a5">📝 A5</button>
@@ -505,7 +550,7 @@
         </div>
         <div class="filter-card" data-filter="magic">
           <div>🌟 Farb-Scan Pro</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Farbecht & Klar</span>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Farbecht & Weiß</span>
         </div>
         <div class="filter-card" data-filter="bw">
           <div>📄 Laserscan</div>
@@ -798,8 +843,112 @@
       free:   { label: 'Frei',      wPt: 595.28, hPt: 841.89, ratio: 1.0 }
     };
 
-    // State (100% lokal im Browser-RAM)
-    let pagesData = [];
+    // ====================================================
+    // LOKALE INDEXED-DB PERSISTENZ (Dauerhafter Speicher)
+    // ====================================================
+    const DB_NAME = 'SmartScan_DB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'pages';
+
+    function openDatabase() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function savePagesToStorage() {
+      try {
+        const db = await openDatabase();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        await new Promise((res, rej) => {
+          const clearReq = store.clear();
+          clearReq.onsuccess = res;
+          clearReq.onerror = rej;
+        });
+        for (const p of pagesData) {
+          store.put(p);
+        }
+      } catch (err) {
+        console.warn('Fehler beim Speichern in IndexedDB:', err);
+      }
+    }
+
+    async function loadPagesFromStorage() {
+      try {
+        const db = await openDatabase();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          if (req.result && req.result.length > 0) {
+            pagesData = req.result;
+            refreshPagesUI();
+          }
+        };
+      } catch (err) {
+        console.warn('Fehler beim Laden aus IndexedDB:', err);
+      }
+    }
+
+    // Beim Starten sofort gespeicherte Seiten laden!
+    window.addEventListener('DOMContentLoaded', () => {
+      loadPagesFromStorage();
+    });
+
+    // Button: Alles löschen & Cache leeren
+    document.getElementById('btnClearAllStorage').addEventListener('click', async () => {
+      if (confirm('Möchtest du wirklich alle gespeicherten Dokumente und den lokalen Speicher leeren? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+        pagesData = [];
+        try {
+          const db = await openDatabase();
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).clear();
+        } catch(e){}
+        refreshPagesUI();
+        showToast('Speicher vollständig geleert');
+      }
+    });
+
+    // PWA Info & Install Prompt Handling
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('btnTriggerPwaInstall');
+      if (btn) btn.style.display = 'inline-flex';
+    });
+
+    document.getElementById('btnPwaInfo').addEventListener('click', () => {
+      document.getElementById('pwaInfoModal').style.display = 'flex';
+      safeRenderIcons();
+    });
+
+    document.getElementById('btnClosePwaModal').addEventListener('click', () => {
+      document.getElementById('pwaInfoModal').style.display = 'none';
+    });
+
+    document.getElementById('btnTriggerPwaInstall').addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          showToast('App wird installiert!');
+        }
+        deferredPrompt = null;
+        document.getElementById('pwaInfoModal').style.display = 'none';
+      }
+    });
+
+    // State
     let activePageIndex = null;
     let targetPageForNewScan = null;
     let currentRawImage = null;
@@ -867,7 +1016,7 @@
     const btnCreateBlankSheet = document.getElementById('btnCreateBlankSheet');
 
     const pickTargetSheetModal = document.getElementById('pickTargetSheetModal');
-    const btnClosePickTargetModal = document.getElementById('btnClosePickTargetModal');
+    const btnClosePickTargetSheetModal = document.getElementById('btnClosePickTargetModal');
     const btnTargetNewCustomSheet = document.getElementById('btnTargetNewCustomSheet');
     const lblTargetNewCustomSheet = document.getElementById('lblTargetNewCustomSheet');
 
@@ -919,20 +1068,6 @@
       safeRenderIcons();
     }
 
-    // SortableJS mit Touch-Verzögerung für flüssiges Scrollen
-    new Sortable(pagesGrid, {
-      animation: 200,
-      handle: '.card-handle',
-      touchStartThreshold: 8,
-      delay: 200,
-      delayOnTouchOnly: true,
-      onEnd: (evt) => {
-        const item = pagesData.splice(evt.oldIndex, 1)[0];
-        pagesData.splice(evt.newIndex, 0, item);
-        refreshPagesUI();
-      }
-    });
-
     // ----------------------------------------------------
     // 1. BLANKO-SEITEN ERSTELLUNG
     // ----------------------------------------------------
@@ -942,7 +1077,7 @@
       cvs.width = Math.round(fmt.wPt * 2);
       cvs.height = Math.round(fmt.hPt * 2);
       const ctx = cvs.getContext('2d');
-      ctx.fillStyle = '#ffffff'; // Garantiert reinweiß
+      ctx.fillStyle = '#ffffff'; // Garantiert weiß
       ctx.fillRect(0, 0, cvs.width, cvs.height);
 
       const newPage = {
@@ -952,7 +1087,8 @@
         items: []
       };
       pagesData.push(newPage);
-      refreshPagesUI(); // Sofort in der Dokumentenliste sichtbar!
+      savePagesToStorage();
+      refreshPagesUI();
       openLayoutEditor(pagesData.length - 1);
       showToast(`Weiße ${fmt.label}-Seite erstellt`);
     }
@@ -1417,17 +1553,14 @@
       });
     }
 
-    // Smarte Lupe: wandert automatisch in die jeweils freie Ecke
-    function updateLoupe(normX, normY, clientX, clientY) {
+    // Smarte Lupe: Stabil oben, wechselt lateral links/rechts
+    function updateLoupe(normX, normY, clientX) {
       if (!currentRawImage) return;
 
       cropLoupe.style.display = 'block';
 
       const winW = window.innerWidth;
-      const winH = window.innerHeight;
-
       const isRight = clientX > winW / 2;
-      const isBottom = clientY > winH / 2;
 
       if (isRight) {
         cropLoupe.style.left = '20px';
@@ -1435,14 +1568,6 @@
       } else {
         cropLoupe.style.left = 'auto';
         cropLoupe.style.right = '20px';
-      }
-
-      if (isBottom) {
-        cropLoupe.style.top = '70px';
-        cropLoupe.style.bottom = 'auto';
-      } else {
-        cropLoupe.style.top = 'auto';
-        cropLoupe.style.bottom = '90px';
       }
 
       const srcX = normX * currentRawImage.width;
@@ -1479,7 +1604,7 @@
       return inside;
     }
 
-    // Rahmen als Ganzes verschieben
+    // Verschieben des Rahmens
     let isMovingEntireBox = false;
     let boxMoveStart = { x: 0, y: 0 };
     let initialCornersState = null;
@@ -1532,7 +1657,6 @@
       }
     });
 
-    // Ecken anfassen mit Lupe
     Object.keys(handles).forEach(key => {
       const handle = handles[key];
       let isDragging = false;
@@ -1551,7 +1675,7 @@
 
         drawCropPreview();
         updateHandlePositions();
-        updateLoupe(nx, ny, clientX, clientY);
+        updateLoupe(nx, ny, clientX);
       };
 
       const onPointerUp = () => {
@@ -1565,14 +1689,14 @@
 
       handle.addEventListener('mousedown', (e) => {
         e.preventDefault(); e.stopPropagation(); isDragging = true;
-        updateLoupe(corners[key].x, corners[key].y, e.clientX, e.clientY);
+        updateLoupe(corners[key].x, corners[key].y, e.clientX);
         window.addEventListener('mousemove', onPointerMove);
         window.addEventListener('mouseup', onPointerUp);
       });
       handle.addEventListener('touchstart', (e) => {
         e.preventDefault(); e.stopPropagation(); isDragging = true;
         const touch = e.touches[0];
-        updateLoupe(corners[key].x, corners[key].y, touch.clientX, touch.clientY);
+        updateLoupe(corners[key].x, corners[key].y, touch.clientX);
         window.addEventListener('touchmove', onPointerMove, { passive: false });
         window.addEventListener('touchend', onPointerUp);
       }, { passive: false });
@@ -1582,7 +1706,6 @@
     // 4. ECHTER ZUSCHNITT OHNE JEDE VERZERRUNG
     // ----------------------------------------------------
     function executeUnwarpedCrop(sourceImg, srcCorners) {
-      // Ermittle die genaue Hüllkurve der Markierung im Originalbild
       const minX = Math.round(Math.min(srcCorners.tl.x, srcCorners.bl.x, srcCorners.tr.x, srcCorners.br.x) * sourceImg.width);
       const maxX = Math.round(Math.max(srcCorners.tl.x, srcCorners.bl.x, srcCorners.tr.x, srcCorners.br.x) * sourceImg.width);
       const minY = Math.round(Math.min(srcCorners.tl.y, srcCorners.tr.y, srcCorners.bl.y, srcCorners.br.y) * sourceImg.height);
@@ -1595,7 +1718,6 @@
       croppedImageCanvas.height = cropH;
       const ctx = croppedImageCanvas.getContext('2d');
 
-      // EXAKTER ZUSCHNITT DIREKT AUS DEM ORIGINAL -> 100% NULL VERZERRUNG
       ctx.drawImage(sourceImg, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
     }
 
@@ -1629,7 +1751,6 @@
       });
     });
 
-    // Saubere Filter-Pipeline (Original als sicherer Standard)
     function renderPerfectionFilter() {
       const w = croppedImageCanvas.width;
       const h = croppedImageCanvas.height;
@@ -1853,6 +1974,7 @@
       };
 
       pagesData.push(newPage);
+      savePagesToStorage();
       refreshPagesUI();
       showToast('Als Vollseite gespeichert!');
     });
@@ -1899,7 +2021,7 @@
       openLayoutEditor(targetIdx);
     });
 
-    btnClosePickTargetModal.addEventListener('click', () => {
+    btnClosePickTargetSheetModal.addEventListener('click', () => {
       pickTargetSheetModal.style.display = 'none';
     });
 
@@ -1931,6 +2053,7 @@
       pagesData.push(newPage);
       const newIdx = pagesData.length - 1;
       addItemToPage(newIdx, pendingScanDataUrl, pendingScanAspect);
+      savePagesToStorage();
       refreshPagesUI();
       openLayoutEditor(newIdx);
     });
@@ -1962,7 +2085,7 @@
     }
 
     // ----------------------------------------------------
-    // 6. MONTAGE-EDITOR (BUTTERWEICHER TOUCH-DRAG)
+    // 6. MONTAGE-EDITOR
     // ----------------------------------------------------
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
@@ -2124,7 +2247,7 @@
       renderSheetItems();
     };
 
-    // STABILES VERSCHIEBEN MIT NATIVEM POINTER-CAPTURE
+    // Stabile Pointer-Interaktion ohne Re-Render-Verlust
     function setupItemInteractions(el, item) {
       let isDraggingItem = false;
       let startX = 0, startY = 0;
@@ -2266,14 +2389,15 @@
       }
 
       page.previewUrl = cvs.toDataURL('image/jpeg', 0.90);
+      savePagesToStorage();
     }
 
     // ----------------------------------------------------
-    // 7. SEITENVERWALTUNG
+    // 7. SEITENVERWALTUNG & UI
     // ----------------------------------------------------
     function refreshPagesUI() {
       pagesGrid.innerHTML = '';
-      if (pagesData.length === 0) {
+      if (!pagesData || pagesData.length === 0) {
         emptyView.style.display = 'flex';
         pagesGrid.style.display = 'none';
         btnOpenExportModal.disabled = true;
@@ -2326,11 +2450,13 @@
       const temp = pagesData[index];
       pagesData[index] = pagesData[target];
       pagesData[target] = temp;
+      savePagesToStorage();
       refreshPagesUI();
     };
 
     window.removePage = function(index) {
       pagesData.splice(index, 1);
+      savePagesToStorage();
       refreshPagesUI();
     };
 
@@ -2342,7 +2468,7 @@
     };
 
     // ----------------------------------------------------
-    // 8. PDF-EXPORT (100% ZUVERLÄSSIG)
+    // 8. PDF-EXPORT (100% ZUVERLÄSSIG & SCHNELL)
     // ----------------------------------------------------
     btnOpenExportModal.addEventListener('click', () => {
       const now = new Date();
@@ -2380,7 +2506,6 @@
       });
     });
 
-    // Synchroner Byte-Konverter
     function dataUrlToBytes(dataUrl) {
       const base64 = dataUrl.split(',')[1];
       const binary = atob(base64);
@@ -2419,7 +2544,6 @@
           c.height = targetH;
           const ctx = c.getContext('2d');
 
-          // Reinweißer Seitenhintergrund
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, targetW, targetH);
 
