@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>SmartScan Pro | Mobile Document Scanner</title>
 
-  <!-- Lucide Icons, pdf-lib & SortableJS (100% lokal im Browser) -->
+  <!-- Lucide Icons, pdf-lib & SortableJS (100% clientseitig im Browser) -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -27,7 +27,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; overflow-x: hidden; }
 
-    /* App-Rahmen: zentriert am PC, nativ am Smartphone */
     .app-shell {
       width: 100%; max-width: 560px; min-height: 100vh; background: var(--bg);
       display: flex; flex-direction: column; position: relative;
@@ -123,7 +122,7 @@
     }
     .floating-shutter-trigger:active { transform: scale(0.92); }
 
-    /* Modale Z-Index Struktur */
+    /* Z-Index Ebenen */
     #layoutModal     { z-index: 100; }
     #scanEditorModal { z-index: 150; }
     #cameraModal     { z-index: 250 !important; }
@@ -205,6 +204,21 @@
       background: var(--primary); border: 3px solid #fff; box-shadow: 0 0 14px rgba(59,130,246,0.9);
       transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none;
     }
+
+    /* ========================================================
+       VERGRÖSSERUNGS-LUPE (Loupe) FÜR PRÄZISE ECKEN-JUSTAGE
+       ======================================================== */
+    .crop-loupe {
+      position: fixed; width: 120px; height: 120px; border-radius: 50%;
+      border: 3px solid var(--primary); box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+      overflow: hidden; pointer-events: none; z-index: 400; display: none; background: #000;
+    }
+    .crop-loupe canvas { width: 100%; height: 100%; display: block; }
+    .loupe-crosshair {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
+    }
+    .loupe-crosshair::before { content: ''; position: absolute; width: 100%; height: 1.5px; background: rgba(59,130,246,0.9); }
+    .loupe-crosshair::after { content: ''; position: absolute; height: 100%; width: 1.5px; background: rgba(59,130,246,0.9); }
 
     .controls-panel {
       background: var(--surface); border-top: 1px solid var(--surface-border);
@@ -379,9 +393,14 @@
     </div>
   </div>
 
+  <!-- Vergrößerungs-Lupe Element -->
+  <div class="crop-loupe" id="cropLoupe">
+    <canvas id="loupeCanvas" width="120" height="120"></canvas>
+    <div class="loupe-crosshair"></div>
+  </div>
+
   <!-- Scan-Editor Modal (Schritt 1: Zuschnitt | Schritt 2: Filter) -->
   <div id="scanEditorModal" class="modal-fullscreen">
-    <!-- Header für Schritt 1: Zuschnitt -->
     <header id="cropHeader" style="background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem;">
       <button class="btn btn-secondary btn-icon" id="btnCancelScanEdit" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
       <span style="font-weight: 700; font-size: 0.88rem; flex:1; text-align: center;">1. Bereich zuschneiden</span>
@@ -390,7 +409,6 @@
       </button>
     </header>
 
-    <!-- Header für Schritt 2: Filter & Fertigstellen -->
     <header id="filterHeader" style="display:none; background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem; gap: 0.4rem;">
       <button class="btn btn-secondary btn-icon" id="btnBackToCrop" style="width:34px;height:34px;" title="Zurück zum Zuschnitt"><i data-lucide="arrow-left"></i></button>
       <span style="font-weight: 700; font-size: 0.85rem; flex:1;">2. Filter wählen</span>
@@ -421,7 +439,7 @@
       </div>
     </div>
 
-    <!-- Panel für Schritt 1: Format-Wahl & Zuschnitt -->
+    <!-- Panel Schritt 1: Zuschnitt -->
     <div class="controls-panel" id="cropControlsPanel">
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;">
         <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600;">Format für Zuschnitt wählen:</span>
@@ -445,10 +463,10 @@
         <button class="format-pill" data-efmt="free">✂️ Frei</button>
       </div>
 
-      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Tippe in den Rahmen zum Verschieben oder ziehe an den Ecken</span>
+      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Tippe in den Rahmen zum Verschieben oder ziehe an den Ecken (Lupe aktiv!)</span>
     </div>
 
-    <!-- Panel für Schritt 2: Intelligente Filter (Standard: Original!) -->
+    <!-- Panel Schritt 2: Filter (Standard: Original!) -->
     <div class="controls-panel" id="filterControlsPanel" style="display: none;">
       <div class="filter-grid">
         <div class="filter-card active" data-filter="original">
@@ -456,12 +474,12 @@
           <span style="font-size: 0.62rem; color: var(--text-sub);">Unverändert</span>
         </div>
         <div class="filter-card" data-filter="magic">
-          <div>🌟 Scan-Magie</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Weißes Papier</span>
+          <div>🌟 Farb-Scan Pro</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Farbecht & Klar</span>
         </div>
         <div class="filter-card" data-filter="bw">
           <div>📄 Laserscan</div>
-          <span style="font-size: 0.62rem; color: var(--text-sub);">Sauvola CPU</span>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Sauvola S/W</span>
         </div>
         <div class="filter-card" data-filter="antiglare">
           <div>⚡ Blitzlicht</div>
@@ -562,24 +580,39 @@
     </div>
   </div>
 
-  <!-- Ziel-Seite für Montage auswählen -->
+  <!-- Ziel-Seite für Montage auswählen (Mit Multi-Format-Option!) -->
   <div id="pickTargetSheetModal" class="modal-dialog">
     <div class="modal-content">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="font-size: 1.05rem; font-weight: 700;">Auf welcher Seite platzieren?</h3>
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Format für Blanko-Seite wählen</h3>
         <button class="btn btn-secondary btn-icon" id="btnClosePickTargetModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <button class="btn btn-secondary" id="btnTargetNewA4Sheet" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-          <i data-lucide="file-plus" style="color:var(--primary);"></i>
-          <div style="text-align: left;">
-            <div style="font-weight: 700;">Auf neuer weißer DIN A4-Seite</div>
-            <div style="font-size: 0.7rem; color:var(--text-sub);">Erstellt eine neue leere Blanko-Seite</div>
+        <div class="formats-grid" id="pickNewSheetFormatsGrid">
+          <div class="format-card active" data-pfmt="a4">
+            <div class="f-title">📄 DIN A4</div>
+            <div class="f-desc">Standard</div>
           </div>
+          <div class="format-card" data-pfmt="a5">
+            <div class="f-title">📝 DIN A5</div>
+            <div class="f-desc">Kompakt</div>
+          </div>
+          <div class="format-card" data-pfmt="card">
+            <div class="f-title">🪪 Ausweis</div>
+            <div class="f-desc">85.6 × 54 mm</div>
+          </div>
+          <div class="format-card" data-pfmt="receipt">
+            <div class="f-title">🧾 Kassenbon</div>
+            <div class="f-desc">Schmal</div>
+          </div>
+        </div>
+
+        <button class="btn btn-secondary" id="btnTargetNewCustomSheet" style="justify-content: center; padding: 0.65rem 1rem;">
+          <i data-lucide="file-plus"></i> <span id="lblTargetNewCustomSheet">Auf neuer DIN A4-Seite anlegen</span>
         </button>
 
-        <div id="existingSheetsContainer" style="display: none; flex-direction: column; gap: 0.4rem;">
+        <div id="existingSheetsContainer" style="display: none; flex-direction: column; gap: 0.4rem; border-top: 1px solid var(--surface-border); padding-top: 0.6rem;">
           <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Oder Scan auf existierender Seite ergänzen:</label>
           <div style="display: flex; gap: 0.4rem;">
             <select id="selectTargetSheet" style="flex:1; background: #090d16; border: 1px solid var(--surface-border); border-radius: 8px; padding: 0.55rem; color: #fff; font-size: 0.8rem;"></select>
@@ -681,6 +714,7 @@
     let targetPageForNewScan = null;
     let currentRawImage = null;
     let selectedBlankFormat = 'a4';
+    let selectedPlacementFormat = 'a4';
 
     let activeCropFormat = 'a4';
     let activeVfFormat = 'a4';
@@ -727,6 +761,10 @@
     const btnRotateSource = document.getElementById('btnRotateSource');
     const btnAutoDetectCorners = document.getElementById('btnAutoDetectCorners');
 
+    const cropLoupe = document.getElementById('cropLoupe');
+    const loupeCanvas = document.getElementById('loupeCanvas');
+    const loupeCtx = loupeCanvas.getContext('2d');
+
     const blankFormatModal = document.getElementById('blankFormatModal');
     const btnOpenNewBlankModal = document.getElementById('btnOpenNewBlankModal');
     const btnOpenNewBlankModalBottom = document.getElementById('btnOpenNewBlankModalBottom');
@@ -736,7 +774,8 @@
 
     const pickTargetSheetModal = document.getElementById('pickTargetSheetModal');
     const btnClosePickTargetModal = document.getElementById('btnClosePickTargetModal');
-    const btnTargetNewA4Sheet = document.getElementById('btnTargetNewA4Sheet');
+    const btnTargetNewCustomSheet = document.getElementById('btnTargetNewCustomSheet');
+    const lblTargetNewCustomSheet = document.getElementById('lblTargetNewCustomSheet');
     const existingSheetsContainer = document.getElementById('existingSheetsContainer');
     const selectTargetSheet = document.getElementById('selectTargetSheet');
     const btnConfirmAddToExisting = document.getElementById('btnConfirmAddToExisting');
@@ -818,9 +857,9 @@
       blankFormatModal.style.display = 'none';
     });
 
-    document.querySelectorAll('.format-card').forEach(card => {
+    document.querySelectorAll('#blankFormatModal .format-card').forEach(card => {
       card.addEventListener('click', () => {
-        document.querySelectorAll('.format-card').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('#blankFormatModal .format-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
         selectedBlankFormat = card.dataset.fmt;
       });
@@ -1021,7 +1060,7 @@
     });
 
     // ----------------------------------------------------
-    // 3. SCAN-EDITOR: STRIKTE 2 PHASEN (1. ZUSCHNITT -> 2. FILTER)
+    // 3. SCAN-EDITOR: STRIKTE 2 SCHRITTE + LUPE BEIM JUSTIEREN
     // ----------------------------------------------------
     function openScanCropEditor(img, initialProjectedCorners) {
       currentRawImage = img;
@@ -1037,7 +1076,7 @@
       filterParams = { bleach: 70, glare: 60, ink: 40, contrast: 15 };
 
       scanEditorModal.style.display = 'flex';
-      goToStep('crop'); // Immer in Schritt 1 starten!
+      goToStep('crop');
 
       if (initialProjectedCorners) {
         corners = initialProjectedCorners;
@@ -1067,18 +1106,15 @@
         cropControlsPanel.style.display = 'none';
         filterControlsPanel.style.display = 'flex';
 
-        // Warpt den Zuschnitt und rendert den aktuell ausgewählten Filter (Standard: Original)
         warpScannedDocument(currentRawImage, corners, activeCropFormat === 'a4');
         renderPerfectionFilter();
       }
     }
 
-    // Von Schritt 1 (Zuschnitt) zu Schritt 2 (Filter)
     btnProceedToFilter.addEventListener('click', () => {
       goToStep('filter');
     });
 
-    // Zurück zu Schritt 1 (Zuschnitt korrigieren)
     btnBackToCrop.addEventListener('click', () => {
       goToStep('crop');
     });
@@ -1204,6 +1240,49 @@
       });
     }
 
+    // ----------------------------------------------------
+    // VERGRÖSSERUNGS-LUPE (LOUPE) LOGIK
+    // ----------------------------------------------------
+    function updateLoupe(normX, normY, clientX, clientY) {
+      if (!currentRawImage) return;
+
+      cropLoupe.style.display = 'block';
+
+      // Platziere die Lupe ca. 90px oberhalb des Fingers, damit der Daumen sie nicht verdeckt
+      let loupeLeft = clientX - 60;
+      let loupeTop = clientY - 110;
+
+      // Viewport-Kollisionsschutz
+      if (loupeTop < 10) loupeTop = clientY + 50; // Wenn zu weit oben, unter den Finger klappen
+      if (loupeLeft < 10) loupeLeft = 10;
+      if (loupeLeft > window.innerWidth - 130) loupeLeft = window.innerWidth - 130;
+
+      cropLoupe.style.left = `${loupeLeft}px`;
+      cropLoupe.style.top = `${loupeTop}px`;
+
+      // 2.5-facher Zoom-Ausschnitt aus dem Originalbild rendern
+      const srcX = normX * currentRawImage.width;
+      const srcY = normY * currentRawImage.height;
+      const zoomSize = 60; // 60x60 Quellbereich vergrößert auf 120x120
+
+      loupeCtx.clearRect(0, 0, 120, 120);
+      loupeCtx.drawImage(
+        currentRawImage,
+        srcX - zoomSize / 2,
+        srcY - zoomSize / 2,
+        zoomSize,
+        zoomSize,
+        0,
+        0,
+        120,
+        120
+      );
+    }
+
+    function hideLoupe() {
+      cropLoupe.style.display = 'none';
+    }
+
     function isPointInCropPolygon(px, py) {
       const pts = [corners.tl, corners.tr, corners.br, corners.bl];
       let inside = false;
@@ -1216,6 +1295,7 @@
       return inside;
     }
 
+    // Rahmen als Ganzes verschieben
     let isMovingEntireBox = false;
     let boxMoveStart = { x: 0, y: 0 };
     let initialCornersState = null;
@@ -1268,6 +1348,7 @@
       }
     });
 
+    // Ecken einzeln anfassen (MIT LUPE!)
     Object.keys(handles).forEach(key => {
       const handle = handles[key];
       let isDragging = false;
@@ -1278,15 +1359,20 @@
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        corners[key].x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        corners[key].y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+        const nx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const ny = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+
+        corners[key].x = nx;
+        corners[key].y = ny;
 
         drawCropPreview();
         updateHandlePositions();
+        updateLoupe(nx, ny, clientX, clientY);
       };
 
       const onPointerUp = () => {
         isDragging = false;
+        hideLoupe();
         window.removeEventListener('mousemove', onPointerMove);
         window.removeEventListener('mouseup', onPointerUp);
         window.removeEventListener('touchmove', onPointerMove);
@@ -1295,18 +1381,22 @@
 
       handle.addEventListener('mousedown', (e) => {
         e.preventDefault(); e.stopPropagation(); isDragging = true;
+        const rect = canvasCrop.getBoundingClientRect();
+        updateLoupe(corners[key].x, corners[key].y, e.clientX, e.clientY);
         window.addEventListener('mousemove', onPointerMove);
         window.addEventListener('mouseup', onPointerUp);
       });
       handle.addEventListener('touchstart', (e) => {
         e.preventDefault(); e.stopPropagation(); isDragging = true;
+        const touch = e.touches[0];
+        updateLoupe(corners[key].x, corners[key].y, touch.clientX, touch.clientY);
         window.addEventListener('touchmove', onPointerMove, { passive: false });
         window.addEventListener('touchend', onPointerUp);
       }, { passive: false });
     });
 
     // ----------------------------------------------------
-    // 4. PERSPEKTIVISCHER WARP & FILTER PIPELINE
+    // 4. PERSPEKTIVISCHER WARP & SAUBERE FARB-FILTERUNG
     // ----------------------------------------------------
     function getPerspectiveTransform(src, dst) {
       let a = [], b = [];
@@ -1399,7 +1489,6 @@
       warpedOriginalData = dCtx.getImageData(0, 0, outWidth, outHeight);
     }
 
-    // Filter-Klick: Jetzt wird der Filter aktiv gewählt
     document.querySelectorAll('.filter-card').forEach(card => {
       card.addEventListener('click', () => {
         document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
@@ -1430,7 +1519,7 @@
       });
     });
 
-    // Filter-Berechnung: Bei 'original' wird das Bild 1:1 durchgereicht!
+    // PERFEKTIONIERTE FILTER-ENGINE (Keine Farbverzerrung bei Buntaufnahmen!)
     function renderPerfectionFilter() {
       if (!warpedOriginalData) return;
 
@@ -1451,7 +1540,7 @@
         return;
       }
 
-      // SAUVOLA ADAPTIVE BINARISIERUNG
+      // SAUVOLA ADAPTIVE BINARISIERUNG (Für reines Text-Dokument)
       if (activeFilter === 'bw') {
         const gray = new Uint8Array(w * h);
         for (let i = 0, j = 0; i < len; i += 4, j++) {
@@ -1479,7 +1568,7 @@
 
         const winSize = Math.max(16, Math.floor(w / 16));
         const halfWin = Math.floor(winSize / 2);
-        const k = 0.22 + (filterParams.ink / 100) * 0.25;
+        const k = 0.20 + (filterParams.ink / 100) * 0.25;
         const R = 128.0;
 
         for (let y = 0; y < h; y++) {
@@ -1516,9 +1605,11 @@
         return;
       }
 
-      // RETINEX / BLEACH FILTER
+      // ==========================================================
+      // FARB-SCAN PRO: BEIBEHALTUNG ALLER RGB-PROPORTIONEN!
+      // ==========================================================
       const bgSmall = document.createElement('canvas');
-      bgSmall.width = 32; bgSmall.height = Math.round(32 * (h / w));
+      bgSmall.width = 36; bgSmall.height = Math.round(36 * (h / w));
       const bgCtx = bgSmall.getContext('2d');
       bgCtx.drawImage(warpedCanvas, 0, 0, bgSmall.width, bgSmall.height);
 
@@ -1529,63 +1620,82 @@
       bgFullCtx.drawImage(bgSmall, 0, 0, w, h);
       const bgData = bgFullCtx.getImageData(0, 0, w, h).data;
 
-      const bleachRatio = filterParams.bleach / 50;
+      const bleachStrength = filterParams.bleach / 50; // 0..2
       const glareFactor = filterParams.glare / 100;
-      const inkBoost = 1 - (filterParams.ink / 100) * 0.7;
-      const c = filterParams.contrast;
-      const contrastFactor = (259 * (c + 255)) / (255 * (259 - c));
+      const inkDarken = 1 - (filterParams.ink / 100) * 0.45;
+      const contrast = filterParams.contrast;
+      const cFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
 
       for (let i = 0; i < len; i += 4) {
         let r = src[i], g = src[i+1], b = src[i+2];
-        const bgLuma = (bgData[i] * 77 + bgData[i+1] * 150 + bgData[i+2] * 29) >> 8;
+        const bgLuma = Math.max(40, (bgData[i] * 77 + bgData[i+1] * 150 + bgData[i+2] * 29) >> 8);
         const origLuma = (r * 77 + g * 150 + b * 29) >> 8;
 
+        // 1. Blitzlicht-Dämpfung bei extremen Glanz-Hotspots
         if (activeFilter === 'antiglare' || glareFactor > 0.1) {
-          if (bgLuma > 195 && origLuma > 210) {
-            const damp = (origLuma - 195) * glareFactor * 0.45;
+          if (bgLuma > 200 && origLuma > 215) {
+            const damp = (origLuma - 200) * glareFactor * 0.35;
             r = Math.max(0, r - damp);
             g = Math.max(0, g - damp);
             b = Math.max(0, b - damp);
           }
         }
 
-        const normDiv = Math.max(25, bgLuma);
-        let flatR = (r / normDiv) * 240 * bleachRatio;
-        let flatG = (g / normDiv) * 240 * bleachRatio;
-        let flatB = (b / normDiv) * 240 * bleachRatio;
-        let luma = 0.299 * flatR + 0.587 * flatG + 0.114 * flatB;
-
-        const maxChroma = Math.max(r, g, b) - Math.min(r, g, b);
-
         if (activeFilter === 'magic' || activeFilter === 'antiglare') {
-          if (luma > 205 && maxChroma < 25) {
-            flatR = flatG = flatB = 255;
+          // Exakter lokaler Weißabgleich:
+          // Dividiere durch Hintergrundhelligkeit, skaliere auf 255 hoch
+          const gain = (255 / bgLuma) * bleachStrength;
+
+          // Multipliziere R, G, B mit exakt demselben Faktor -> Keine Farbverfälschung!
+          let nr = r * gain;
+          let ng = g * gain;
+          let nb = b * gain;
+
+          const nLuma = (nr * 77 + ng * 150 + nb * 29) >> 8;
+
+          // Wenn der Bereich Papierhintergrund ist (heller als Schwelle) -> sanft auf reinweiß bleichen
+          if (nLuma > 215) {
+            const whiteBlend = (nLuma - 215) / 40;
+            nr = nr + (255 - nr) * whiteBlend;
+            ng = ng + (255 - ng) * whiteBlend;
+            nb = nb + (255 - nb) * whiteBlend;
           } else {
-            flatR *= inkBoost; flatG *= inkBoost; flatB *= inkBoost;
+            // Text / Druckfarbe gezielt vertiefen
+            nr *= inkDarken;
+            ng *= inkDarken;
+            nb *= inkDarken;
           }
+
+          if (contrast !== 0) {
+            nr = cFactor * (nr - 128) + 128;
+            ng = cFactor * (ng - 128) + 128;
+            nb = cFactor * (nb - 128) + 128;
+          }
+
+          dst[i] = Math.max(0, Math.min(255, nr));
+          dst[i+1] = Math.max(0, Math.min(255, ng));
+          dst[i+2] = Math.max(0, Math.min(255, nb));
+          dst[i+3] = 255;
         } else if (activeFilter === 'ink') {
-          if (maxChroma > 20) {
-            flatR = Math.min(255, flatR * 1.25);
-            flatG = Math.min(255, flatG * 1.25);
-            flatB = Math.min(255, flatB * 1.25);
-          } else if (luma > 185) {
-            flatR = flatG = flatB = 255;
+          // Bunte Tinte & Stempel hervorheben
+          const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+          if (chroma > 18) {
+            dst[i] = Math.min(255, r * 1.25);
+            dst[i+1] = Math.min(255, g * 1.25);
+            dst[i+2] = Math.min(255, b * 1.25);
+          } else if (origLuma > 180) {
+            dst[i] = dst[i+1] = dst[i+2] = 255;
+          } else {
+            dst[i] = r * inkDarken;
+            dst[i+1] = g * inkDarken;
+            dst[i+2] = b * inkDarken;
           }
+          dst[i+3] = 255;
         } else if (activeFilter === 'gray') {
-          let grayVal = luma > 210 ? 255 : luma * inkBoost;
-          flatR = flatG = flatB = grayVal;
+          let grayVal = origLuma > (bgLuma - 25) ? 255 : origLuma * inkDarken;
+          dst[i] = dst[i+1] = dst[i+2] = Math.max(0, Math.min(255, grayVal));
+          dst[i+3] = 255;
         }
-
-        if (c !== 0) {
-          flatR = contrastFactor * (flatR - 128) + 128;
-          flatG = contrastFactor * (flatG - 128) + 128;
-          flatB = contrastFactor * (flatB - 128) + 128;
-        }
-
-        dst[i] = Math.max(0, Math.min(255, flatR));
-        dst[i+1] = Math.max(0, Math.min(255, flatG));
-        dst[i+2] = Math.max(0, Math.min(255, flatB));
-        dst[i+3] = 255;
       }
 
       ctx.putImageData(outData, 0, 0);
@@ -1596,7 +1706,7 @@
     });
 
     // ----------------------------------------------------
-    // 5. SPEICHERN: VOLLSEITE VS. BLANKO
+    // 5. SPEICHERPFADE (VOLLSEITE VS. FREIE BLANKO-MONTAGE)
     // ----------------------------------------------------
     btnConfirmFullA4.addEventListener('click', () => {
       const finalUrl = canvasFilterPreview.toDataURL('image/jpeg', 0.90);
@@ -1636,6 +1746,7 @@
         return;
       }
 
+      // Existierende Montageseiten auflisten falls vorhanden
       if (pagesData.length > 0) {
         selectTargetSheet.innerHTML = '';
         pagesData.forEach((p, idx) => {
@@ -1656,11 +1767,21 @@
       pickTargetSheetModal.style.display = 'none';
     });
 
-    btnTargetNewA4Sheet.addEventListener('click', () => {
+    // Format für neue Blanko-Seite beim Platzieren auswählen
+    document.querySelectorAll('#pickNewSheetFormatsGrid .format-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('#pickNewSheetFormatsGrid .format-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedPlacementFormat = card.dataset.pfmt;
+        lblTargetNewCustomSheet.innerText = `Auf neuer ${FORMAT_PRESETS[selectedPlacementFormat].label}-Seite anlegen`;
+      });
+    });
+
+    btnTargetNewCustomSheet.addEventListener('click', () => {
       pickTargetSheetModal.style.display = 'none';
       const newPage = {
         id: 'page_' + Date.now(),
-        formatKey: 'a4',
+        formatKey: selectedPlacementFormat,
         previewUrl: '',
         items: []
       };
@@ -1703,7 +1824,7 @@
     }
 
     // ----------------------------------------------------
-    // 6. MONTAGE-EDITOR (Reinweiß & Butterweicher Touch-Drag)
+    // 6. MONTAGE-EDITOR (BUTTERWEICHES TOUCH-DRAG MIT POINTERCAPTURE)
     // ----------------------------------------------------
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
@@ -1816,78 +1937,101 @@
       renderSheetItems();
     };
 
+    // BUTTERWEICHES TOUCH-VERSCHIEBEN MIT NATIVEM POINTER-CAPTURE
     function setupItemInteractions(el, item) {
+      let isDraggingItem = false;
+      let startX = 0, startY = 0;
+      let initialX = item.x, initialY = item.y;
+      let sheetRect = null;
+      let dragDistance = 0;
+
       el.addEventListener('pointerdown', (e) => {
         if (e.target.closest('.item-toolbar') || e.target.closest('.resize-handle')) return;
-        
-        selectedItemId = item.id;
-        renderSheetItems();
 
-        if (item.locked) return;
-
+        // Pointer erfassen, damit kein Scrollen der Seite dazwischenfunkt!
         el.setPointerCapture(e.pointerId);
 
-        const sheetRect = sheetContainer.getBoundingClientRect();
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const initialX = item.x;
-        const initialY = item.y;
+        isDraggingItem = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        initialX = item.x;
+        initialY = item.y;
+        sheetRect = sheetContainer.getBoundingClientRect();
+        dragDistance = 0;
 
-        const onPointerMove = (ev) => {
-          const dxPercent = ((ev.clientX - startX) / sheetRect.width) * 100;
-          const dyPercent = ((ev.clientY - startY) / sheetRect.height) * 100;
+        selectedItemId = item.id;
+        renderSheetItems();
+      });
+
+      el.addEventListener('pointermove', (e) => {
+        if (!isDraggingItem || item.locked || !sheetRect) return;
+
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        dragDistance = Math.hypot(dx, dy);
+
+        // Erst ab 4px Bewegung wird die Position verändert (verhindert Wackeln beim Antippen)
+        if (dragDistance > 4) {
+          const dxPercent = (dx / sheetRect.width) * 100;
+          const dyPercent = (dy / sheetRect.height) * 100;
 
           item.x = Math.max(0, Math.min(100 - item.w, initialX + dxPercent));
           item.y = Math.max(0, Math.min(100 - item.h, initialY + dyPercent));
 
           el.style.left = `${item.x}%`;
           el.style.top = `${item.y}%`;
-        };
-
-        const onPointerUp = (ev) => {
-          el.releasePointerCapture(ev.pointerId);
-          el.removeEventListener('pointermove', onPointerMove);
-          el.removeEventListener('pointerup', onPointerUp);
-        };
-
-        el.addEventListener('pointermove', onPointerMove);
-        el.addEventListener('pointerup', onPointerUp);
+        }
       });
 
+      const onPointerEnd = (e) => {
+        if (!isDraggingItem) return;
+        isDraggingItem = false;
+        try { el.releasePointerCapture(e.pointerId); } catch(err){}
+      };
+
+      el.addEventListener('pointerup', onPointerEnd);
+      el.addEventListener('pointercancel', onPointerEnd);
+
+      // Skalieren über den Daumen-Griff
       const handle = el.querySelector('.resize-handle');
       if (handle && !item.locked) {
+        let isResizing = false;
+        let rStartX = 0;
+        let initialW = item.w;
+
         handle.addEventListener('pointerdown', (e) => {
           e.stopPropagation();
           handle.setPointerCapture(e.pointerId);
-
-          const sheetRect = sheetContainer.getBoundingClientRect();
-          const startX = e.clientX;
-          const initialW = item.w;
-          const fmtRatio = FORMAT_PRESETS[pagesData[activePageIndex].formatKey].ratio;
-
-          const onResize = (ev) => {
-            const dwPercent = ((ev.clientX - startX) / sheetRect.width) * 100;
-            const newW = Math.max(15, Math.min(100 - item.x, initialW + dwPercent));
-            const newH = newW / (item.aspect * fmtRatio);
-
-            if (item.y + newH <= 100) {
-              item.w = newW;
-              item.h = newH;
-              el.style.width = `${item.w}%`;
-              el.style.height = `${item.h}%`;
-            }
-          };
-
-          const onResizeUp = (ev) => {
-            handle.releasePointerCapture(ev.pointerId);
-            handle.removeEventListener('pointermove', onResize);
-            handle.removeEventListener('pointerup', onResizeUp);
-            renderSheetItems();
-          };
-
-          handle.addEventListener('pointermove', onResize);
-          handle.addEventListener('pointerup', onResizeUp);
+          isResizing = true;
+          rStartX = e.clientX;
+          initialW = item.w;
+          sheetRect = sheetContainer.getBoundingClientRect();
         });
+
+        handle.addEventListener('pointermove', (e) => {
+          if (!isResizing || !sheetRect) return;
+          const dwPercent = ((e.clientX - rStartX) / sheetRect.width) * 100;
+          const newW = Math.max(15, Math.min(100 - item.x, initialW + dwPercent));
+          const fmtRatio = FORMAT_PRESETS[pagesData[activePageIndex].formatKey].ratio;
+          const newH = newW / (item.aspect * fmtRatio);
+
+          if (item.y + newH <= 100) {
+            item.w = newW;
+            item.h = newH;
+            el.style.width = `${item.w}%`;
+            el.style.height = `${item.h}%`;
+          }
+        });
+
+        const onResizeEnd = (e) => {
+          if (!isResizing) return;
+          isResizing = false;
+          try { handle.releasePointerCapture(e.pointerId); } catch(err){}
+          renderSheetItems();
+        };
+
+        handle.addEventListener('pointerup', onResizeEnd);
+        handle.addEventListener('pointercancel', onResizeEnd);
       }
     }
 
