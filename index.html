@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>SmartScan Pro | Mobile Document Scanner</title>
+
+  <!-- Lucide Icons, pdf-lib & SortableJS (100% lokal im Browser) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --bg: #090d16;
+      --surface: #121826;
+      --surface-border: #1e293b;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --accent: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; overflow-x: hidden; }
+
+    /* App-Rahmen: zentriert am PC, nativ am Smartphone */
+    .app-shell {
+      width: 100%; max-width: 560px; min-height: 100vh; background: var(--bg);
+      display: flex; flex-direction: column; position: relative;
+      border-left: 1px solid rgba(255,255,255,0.06); border-right: 1px solid rgba(255,255,255,0.06);
+    }
+
+    header {
+      background: rgba(18, 24, 38, 0.92); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--surface-border); position: sticky; top: 0; z-index: 40;
+      padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.05rem; white-space: nowrap; }
+    .brand i { color: var(--primary); }
+
+    .btn {
+      background: var(--primary); color: #fff; border: none; outline: none;
+      padding: 0.5rem 0.85rem; border-radius: 9999px; font-weight: 600; font-size: 0.82rem;
+      display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;
+      transition: all 0.15s ease; user-select: none; white-space: nowrap;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn:active { transform: scale(0.96); }
+    .btn-secondary { background: var(--surface-border); color: var(--text-main); }
+    .btn-secondary:hover { background: #2c3b53; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    main { flex: 1; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 6rem; }
+
+    .env-notice {
+      background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35);
+      border-radius: 12px; padding: 0.75rem 0.85rem; font-size: 0.78rem; color: #fbbf24;
+      display: flex; gap: 0.6rem; align-items: flex-start; line-height: 1.35;
+    }
+    .env-notice i { flex-shrink: 0; margin-top: 2px; }
+
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 3.5rem 1.25rem; text-align: center; border: 2px dashed var(--surface-border);
+      border-radius: 16px; background: rgba(18, 24, 38, 0.5); margin-top: 1rem;
+    }
+    .empty-state i { color: var(--primary); width: 44px; height: 44px; margin-bottom: 0.75rem; opacity: 0.85; }
+
+    /* Grid */
+    .pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem; }
+    .page-card {
+      background: var(--surface); border: 1px solid var(--surface-border);
+      border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3); position: relative;
+    }
+    .page-card .thumb-wrapper {
+      position: relative; width: 100%; height: 240px; background: #080d1a;
+      display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer;
+    }
+    .page-card img { width: 100%; height: 100%; object-fit: contain; }
+    .page-card .format-tag {
+      position: absolute; top: 8px; left: 8px; background: rgba(15,23,42,0.85);
+      backdrop-filter: blur(4px); font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.45rem;
+      border-radius: 6px; border: 1px solid var(--surface-border);
+    }
+    .page-card .edit-hint {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      opacity: 0; transition: opacity 0.2s; font-size: 0.82rem; font-weight: 600;
+    }
+    .page-card:hover .edit-hint { opacity: 1; }
+
+    .page-card .card-info {
+      padding: 0.55rem 0.7rem; display: flex; justify-content: space-between; align-items: center;
+      background: #0f1626; border-top: 1px solid var(--surface-border);
+    }
+    .card-nav { display: flex; align-items: center; gap: 0.2rem; }
+    .card-nav-btn {
+      background: #1e293b; border: 1px solid var(--surface-border); color: #fff;
+      width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 0.75rem;
+    }
+    .card-nav-btn:hover:not(:disabled) { background: var(--primary); }
+    .card-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+    .card-handle { cursor: grab; display: flex; align-items: center; gap: 0.2rem; color: var(--text-sub); font-size: 0.78rem; font-weight: 600; }
+
+    /* Bottom Bar */
+    .mobile-bottom-bar {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 560px; background: rgba(18, 24, 38, 0.95);
+      backdrop-filter: blur(16px); border-top: 1px solid var(--surface-border);
+      padding: 0.65rem 1.25rem; display: flex; justify-content: space-around; align-items: center; z-index: 45;
+    }
+    .floating-shutter-trigger {
+      width: 56px; height: 56px; border-radius: 50%; background: var(--primary);
+      border: 3px solid rgba(255,255,255,0.25); color: #fff; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.45); cursor: pointer; transition: transform 0.15s; margin-top: -24px;
+    }
+    .floating-shutter-trigger:active { transform: scale(0.92); }
+
+    /* Modale Z-Index Struktur */
+    #layoutModal     { z-index: 100; }
+    #scanEditorModal { z-index: 150; }
+    #cameraModal     { z-index: 250 !important; }
+    .modal-dialog    { z-index: 300 !important; }
+    .toast-badge     { z-index: 350 !important; }
+
+    .modal-fullscreen { display: none; position: fixed; inset: 0; background: #060911; flex-direction: column; }
+    .modal-dialog {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-content {
+      background: var(--surface); border: 1px solid var(--surface-border); border-radius: 18px;
+      max-width: 480px; width: 100%; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6); max-height: 90vh; overflow-y: auto;
+    }
+
+    /* Kamera */
+    #cameraModal video { width: 100%; height: 100%; object-fit: cover; }
+    .camera-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 1rem; pointer-events: none; }
+    .camera-overlay * { pointer-events: auto; }
+    .camera-top-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .camera-bottom-bar { display: flex; justify-content: space-around; align-items: center; margin-bottom: 1.5rem; }
+
+    .viewfinder-box {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      border: 2px solid rgba(59, 130, 246, 0.9); border-radius: 6px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); pointer-events: none;
+      transition: width 0.2s, height 0.2s;
+    }
+    .vf-corner { position: absolute; width: 16px; height: 16px; border-color: #fff; border-style: solid; }
+    .vf-tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+    .vf-tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
+    .vf-br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+    .vf-bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
+    .vf-badge {
+      position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+      background: rgba(15,23,42,0.9); backdrop-filter: blur(4px);
+      padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; color: #fff;
+      border: 1px solid var(--surface-border); white-space: nowrap;
+    }
+
+    .shutter-btn {
+      width: 72px; height: 72px; border-radius: 50%; border: 4px solid #fff;
+      background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .shutter-btn::after { content: ''; width: 54px; height: 54px; background: #fff; border-radius: 50%; }
+
+    /* Formate-Pills */
+    .formats-scroll-bar {
+      display: flex; gap: 0.35rem; background: rgba(15,23,42,0.85); padding: 0.25rem 0.4rem;
+      border-radius: 9999px; border: 1px solid var(--surface-border); overflow-x: auto; max-width: 80vw;
+    }
+    .format-pill {
+      background: transparent; border: none; color: var(--text-sub); font-size: 0.75rem; font-weight: 600;
+      padding: 0.3rem 0.65rem; border-radius: 9999px; cursor: pointer; white-space: nowrap; transition: 0.15s;
+    }
+    .format-pill.active { background: var(--primary); color: #fff; }
+
+    .formats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+    .format-card {
+      background: #0b1120; border: 1.5px solid var(--surface-border); border-radius: 10px;
+      padding: 0.65rem; cursor: pointer; display: flex; flex-direction: column; gap: 0.15rem;
+      transition: 0.15s ease;
+    }
+    .format-card:hover { border-color: var(--primary); background: #131c31; }
+    .format-card.active { border-color: var(--primary); background: rgba(59, 130, 246, 0.18); }
+    .format-card .f-title { font-weight: 700; font-size: 0.85rem; color: #fff; }
+    .format-card .f-desc { font-size: 0.7rem; color: var(--text-sub); }
+
+    /* Stage */
+    .editor-stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 0.75rem; }
+    #canvasWarpWrapper { position: relative; touch-action: none; max-width: 100%; max-height: 100%; }
+    #canvasCrop { max-width: 100%; max-height: calc(100vh - 260px); display: block; border-radius: 8px; }
+    #canvasFilterPreview { max-width: 100%; max-height: calc(100vh - 270px); display: block; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+
+    .corner-handle {
+      position: absolute; width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary); border: 3px solid #fff; box-shadow: 0 0 14px rgba(59,130,246,0.9);
+      transform: translate(-50%, -50%); cursor: grab; z-index: 10; touch-action: none;
+    }
+
+    .controls-panel {
+      background: var(--surface); border-top: 1px solid var(--surface-border);
+      padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.65rem; max-height: 42vh; overflow-y: auto;
+    }
+
+    .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+    .filter-card {
+      background: #0f172a; border: 1.5px solid var(--surface-border); border-radius: 8px;
+      padding: 0.45rem 0.2rem; text-align: center; cursor: pointer; font-size: 0.7rem; font-weight: 600;
+      color: var(--text-sub); transition: 0.15s;
+    }
+    .filter-card.active { border-color: var(--primary); background: #1e293b; color: #fff; }
+
+    .sliders-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.6rem 1rem; }
+    .slider-item { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; }
+    .slider-header { display: flex; justify-content: space-between; color: var(--text-sub); font-weight: 500; }
+    .slider-item input[type=range] { accent-color: var(--primary); width: 100%; cursor: pointer; }
+
+    /* Montage Editor */
+    #layoutModal { background: #050811; }
+    .layout-stage {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; padding: 0.85rem; position: relative;
+    }
+    .canvas-sheet {
+      background: #ffffff; position: relative;
+      max-width: 460px; max-height: calc(100vh - 140px); width: 100%;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 4px; overflow: hidden;
+      touch-action: none;
+    }
+
+    .scan-item {
+      position: absolute; touch-action: none; user-select: none;
+      cursor: grab; display: flex; align-items: center; justify-content: center;
+    }
+    .scan-item.selected { outline: 2px dashed var(--primary); box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
+    .scan-item img { width: 100%; height: 100%; object-fit: fill; pointer-events: none; border: 1px solid rgba(0,0,0,0.08); }
+
+    .item-toolbar {
+      position: absolute; top: -38px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; border: 1px solid var(--surface-border); border-radius: 9999px;
+      display: flex; gap: 0.3rem; padding: 0.2rem 0.4rem; z-index: 30; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      white-space: nowrap;
+    }
+    .item-btn {
+      background: transparent; border: none; color: #fff; width: 28px; height: 28px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .item-btn:hover { background: #1e293b; }
+    .item-btn.active { color: var(--warning); }
+
+    .resize-handle {
+      position: absolute; bottom: -10px; right: -10px; width: 34px; height: 34px;
+      background: var(--primary); border: 2.5px solid #fff; border-radius: 50%;
+      cursor: nwse-resize; z-index: 25; touch-action: none;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .scan-item.locked .resize-handle { display: none; }
+    .scan-item.locked { cursor: default; }
+    .lock-badge {
+      position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7);
+      color: var(--warning); border-radius: 50%; width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.7rem; pointer-events: none; z-index: 20;
+    }
+
+    .toast-badge {
+      position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%);
+      background: rgba(16, 185, 129, 0.95); backdrop-filter: blur(8px); color: #fff;
+      padding: 0.45rem 1.1rem; border-radius: 9999px; font-size: 0.82rem; font-weight: 600;
+      display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      opacity: 0; pointer-events: none; transition: 0.25s ease;
+    }
+    .toast-badge.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <header>
+      <div class="brand">
+        <i data-lucide="scan-line"></i>
+        <span>SmartScan Pro</span>
+      </div>
+      <div style="display: flex; gap: 0.4rem; align-items: center;">
+        <button class="btn btn-secondary btn-icon" id="btnOpenExportModal" disabled title="PDF Speichern">
+          <i data-lucide="file-down"></i>
+        </button>
+        <button class="btn btn-secondary" id="btnOpenNewBlankModal" title="Blanko-Seite anlegen">
+          <i data-lucide="file-plus"></i>
+          <span>+ Blanko</span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <div class="env-notice" id="envNotice" style="display: none;">
+        <i data-lucide="info" style="width: 16px; height: 16px;"></i>
+        <div>
+          <strong>Lokale Datei erkannt:</strong> Mobile Browser sperren Live-Video ohne HTTPS. Beim Klick auf den Auslöser öffnet sich automatisch deine native Smartphone-Kamera!
+        </div>
+      </div>
+
+      <div id="emptyView" class="empty-state">
+        <i data-lucide="layers"></i>
+        <h3>Keine Dokumente vorhanden</h3>
+        <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.35rem; max-width: 320px;">
+          Tippe unten auf den Kamera-Button oder erstelle eine Blanko-Seite.
+        </p>
+      </div>
+      <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
+    </main>
+
+    <div class="mobile-bottom-bar">
+      <button class="btn btn-secondary" id="btnOpenNewBlankModalBottom" style="padding: 0.45rem 0.75rem;">
+        <i data-lucide="layout-grid"></i>
+        <span>Formate</span>
+      </button>
+
+      <div class="floating-shutter-trigger" id="btnStartScan" title="Scan starten">
+        <i data-lucide="camera" style="width: 26px; height: 26px;"></i>
+        <input type="file" id="nativeCameraFallbackInput" accept="image/*" capture="environment" style="display:none;" />
+      </div>
+
+      <button class="btn btn-secondary" id="btnQuickBlankA4" style="padding: 0.45rem 0.75rem;">
+        <i data-lucide="file-plus"></i>
+        <span>A4 Blanko</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Kamera Modal (Live Viewfinder) -->
+  <div id="cameraModal" class="modal-fullscreen">
+    <video id="cameraVideo" playsinline autoplay muted></video>
+    
+    <div class="viewfinder-box" id="vfBox">
+      <div class="vf-badge" id="vfBadge">DIN A4</div>
+      <div class="vf-corner vf-tl"></div>
+      <div class="vf-corner vf-tr"></div>
+      <div class="vf-corner vf-br"></div>
+      <div class="vf-corner vf-bl"></div>
+    </div>
+
+    <div class="camera-overlay">
+      <div class="camera-top-bar">
+        <button class="btn btn-secondary btn-icon" id="btnCloseCamera"><i data-lucide="x"></i></button>
+
+        <div class="formats-scroll-bar" id="camFormatsBar">
+          <button class="format-pill active" data-cfmt="a4">📄 A4</button>
+          <button class="format-pill" data-cfmt="a5">📝 A5</button>
+          <button class="format-pill" data-cfmt="a3">📐 A3</button>
+          <button class="format-pill" data-cfmt="card">🪪 Ausweis</button>
+          <button class="format-pill" data-cfmt="biz">💼 Karte</button>
+          <button class="format-pill" data-cfmt="receipt">🧾 Bon</button>
+          <button class="format-pill" data-cfmt="free">✂️ Frei</button>
+        </div>
+
+        <button class="btn btn-secondary btn-icon" id="btnToggleTorch" style="display: none;">
+          <i data-lucide="zap-off" id="torchIcon"></i>
+        </button>
+      </div>
+
+      <div class="camera-bottom-bar">
+        <label class="btn btn-secondary btn-icon" title="Aus Galerie wählen">
+          <i data-lucide="image"></i>
+          <input type="file" id="fallbackFileInput" accept="image/*" style="display:none;" />
+        </label>
+        <button class="shutter-btn" id="btnShutter"></button>
+        <div style="width: 36px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scan-Editor Modal (Schritt 1: Zuschnitt | Schritt 2: Filter) -->
+  <div id="scanEditorModal" class="modal-fullscreen">
+    <!-- Header für Schritt 1: Zuschnitt -->
+    <header id="cropHeader" style="background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem;">
+      <button class="btn btn-secondary btn-icon" id="btnCancelScanEdit" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
+      <span style="font-weight: 700; font-size: 0.88rem; flex:1; text-align: center;">1. Bereich zuschneiden</span>
+      <button class="btn" id="btnProceedToFilter" style="font-size:0.78rem; padding:0.4rem 0.8rem;">
+        <span>Weiter</span> <i data-lucide="chevron-right" style="width:14px;"></i>
+      </button>
+    </header>
+
+    <!-- Header für Schritt 2: Filter & Fertigstellen -->
+    <header id="filterHeader" style="display:none; background: rgba(18,24,38,0.95); border-bottom: 1px solid var(--surface-border); padding: 0.6rem 0.85rem; gap: 0.4rem;">
+      <button class="btn btn-secondary btn-icon" id="btnBackToCrop" style="width:34px;height:34px;" title="Zurück zum Zuschnitt"><i data-lucide="arrow-left"></i></button>
+      <span style="font-weight: 700; font-size: 0.85rem; flex:1;">2. Filter wählen</span>
+
+      <div style="display:flex; gap:0.35rem;">
+        <button class="btn btn-secondary" id="btnConfirmToBlank" style="font-size:0.75rem; padding:0.4rem 0.65rem;" title="Auf Blanko-Seite einfügen">
+          <i data-lucide="layout"></i> <span>Auf Blanko</span>
+        </button>
+        <button class="btn" id="btnConfirmFullA4" style="font-size:0.75rem; padding:0.4rem 0.65rem;" title="Als volle Seite speichern">
+          <i data-lucide="file-check"></i> <span>Vollseite</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="editor-stage">
+      <div id="warpView" style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">
+        <div id="canvasWarpWrapper">
+          <canvas id="canvasCrop"></canvas>
+          <div class="corner-handle" id="hTL"></div>
+          <div class="corner-handle" id="hTR"></div>
+          <div class="corner-handle" id="hBR"></div>
+          <div class="corner-handle" id="hBL"></div>
+        </div>
+      </div>
+
+      <div id="filterView" style="display: none; align-items: center; justify-content: center; width: 100%; height: 100%;">
+        <canvas id="canvasFilterPreview"></canvas>
+      </div>
+    </div>
+
+    <!-- Panel für Schritt 1: Format-Wahl & Zuschnitt -->
+    <div class="controls-panel" id="cropControlsPanel">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;">
+        <span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600;">Format für Zuschnitt wählen:</span>
+        <div style="display: flex; gap: 0.3rem;">
+          <button class="btn btn-secondary" id="btnAutoDetectCorners" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">
+            <i data-lucide="refresh-cw" style="width:12px;"></i> Reset
+          </button>
+          <button class="btn btn-secondary" id="btnRotateSource" style="font-size: 0.72rem; padding: 0.3rem 0.6rem;">
+            <i data-lucide="rotate-cw" style="width:12px;"></i> 90°
+          </button>
+        </div>
+      </div>
+
+      <div class="formats-scroll-bar" id="editorFormatsBar" style="max-width: 100%; background: #0b1120;">
+        <button class="format-pill active" data-efmt="a4">📄 A4</button>
+        <button class="format-pill" data-efmt="a5">📝 A5</button>
+        <button class="format-pill" data-efmt="a3">📐 A3</button>
+        <button class="format-pill" data-efmt="card">🪪 Ausweis</button>
+        <button class="format-pill" data-efmt="biz">💼 Karte</button>
+        <button class="format-pill" data-efmt="receipt">🧾 Bon</button>
+        <button class="format-pill" data-efmt="free">✂️ Frei</button>
+      </div>
+
+      <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Tippe in den Rahmen zum Verschieben oder ziehe an den Ecken</span>
+    </div>
+
+    <!-- Panel für Schritt 2: Intelligente Filter (Standard: Original!) -->
+    <div class="controls-panel" id="filterControlsPanel" style="display: none;">
+      <div class="filter-grid">
+        <div class="filter-card active" data-filter="original">
+          <div>📷 Original</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Unverändert</span>
+        </div>
+        <div class="filter-card" data-filter="magic">
+          <div>🌟 Scan-Magie</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Weißes Papier</span>
+        </div>
+        <div class="filter-card" data-filter="bw">
+          <div>📄 Laserscan</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Sauvola CPU</span>
+        </div>
+        <div class="filter-card" data-filter="antiglare">
+          <div>⚡ Blitzlicht</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Hotspot-Dämpfung</span>
+        </div>
+        <div class="filter-card" data-filter="ink">
+          <div>🖊️ Tinte/Stempel</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Unterschrift</span>
+        </div>
+        <div class="filter-card" data-filter="gray">
+          <div>🌫️ Graustufen</div>
+          <span style="font-size: 0.62rem; color: var(--text-sub);">Schattenfrei</span>
+        </div>
+      </div>
+
+      <div class="sliders-grid">
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Papier-Bleichung</span>
+            <span id="valBleach">70</span>
+          </div>
+          <input type="range" id="sliderBleach" min="0" max="100" value="70" />
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Blitz-Dämpfung</span>
+            <span id="valGlare">60</span>
+          </div>
+          <input type="range" id="sliderGlare" min="0" max="100" value="60" />
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Tinten-Stärke</span>
+            <span id="valInk">40</span>
+          </div>
+          <input type="range" id="sliderInk" min="0" max="100" value="40" />
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>Kontrast</span>
+            <span id="valContrast">15</span>
+          </div>
+          <input type="range" id="sliderContrast" min="-100" max="100" value="15" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blanko-Format Auswahl Modal -->
+  <div id="blankFormatModal" class="modal-dialog">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Format für Blanko-Seite wählen</h3>
+        <button class="btn btn-secondary btn-icon" id="btnCloseBlankModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="formats-grid">
+        <div class="format-card active" data-fmt="a4">
+          <div class="f-title">📄 DIN A4</div>
+          <div class="f-desc">210 × 297 mm (Standard)</div>
+        </div>
+        <div class="format-card" data-fmt="a5">
+          <div class="f-title">📝 DIN A5</div>
+          <div class="f-desc">148 × 210 mm (Notizbuch)</div>
+        </div>
+        <div class="format-card" data-fmt="a3">
+          <div class="f-title">📐 DIN A3</div>
+          <div class="f-desc">297 × 420 mm (Großformat)</div>
+        </div>
+        <div class="format-card" data-fmt="letter">
+          <div class="f-title">📜 US Letter</div>
+          <div class="f-desc">216 × 279 mm (US Standard)</div>
+        </div>
+        <div class="format-card" data-fmt="card">
+          <div class="f-title">🪪 Ausweis / ID-1</div>
+          <div class="f-desc">85.6 × 54 mm (Scheckkarte)</div>
+        </div>
+        <div class="format-card" data-fmt="biz">
+          <div class="f-title">💼 Visitenkarte</div>
+          <div class="f-desc">85 × 55 mm</div>
+        </div>
+        <div class="format-card" data-fmt="receipt">
+          <div class="f-title">🧾 Kassenbon</div>
+          <div class="f-desc">80 × 200 mm (Schmal)</div>
+        </div>
+        <div class="format-card" data-fmt="square">
+          <div class="f-title">⏹️ Quadratisch</div>
+          <div class="f-desc">200 × 200 mm</div>
+        </div>
+      </div>
+
+      <button class="btn" id="btnCreateBlankSheet" style="justify-content: center; padding: 0.7rem;">
+        <i data-lucide="plus"></i> Blanko-Seite anlegen
+      </button>
+    </div>
+  </div>
+
+  <!-- Ziel-Seite für Montage auswählen -->
+  <div id="pickTargetSheetModal" class="modal-dialog">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">Auf welcher Seite platzieren?</h3>
+        <button class="btn btn-secondary btn-icon" id="btnClosePickTargetModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <button class="btn btn-secondary" id="btnTargetNewA4Sheet" style="justify-content: flex-start; padding: 0.75rem 1rem;">
+          <i data-lucide="file-plus" style="color:var(--primary);"></i>
+          <div style="text-align: left;">
+            <div style="font-weight: 700;">Auf neuer weißer DIN A4-Seite</div>
+            <div style="font-size: 0.7rem; color:var(--text-sub);">Erstellt eine neue leere Blanko-Seite</div>
+          </div>
+        </button>
+
+        <div id="existingSheetsContainer" style="display: none; flex-direction: column; gap: 0.4rem;">
+          <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Oder Scan auf existierender Seite ergänzen:</label>
+          <div style="display: flex; gap: 0.4rem;">
+            <select id="selectTargetSheet" style="flex:1; background: #090d16; border: 1px solid var(--surface-border); border-radius: 8px; padding: 0.55rem; color: #fff; font-size: 0.8rem;"></select>
+            <button class="btn" id="btnConfirmAddToExisting">Einfügen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Montage-Editor Modal (Reinweiß & Butterweicher Touch-Drag) -->
+  <div id="layoutModal" class="modal-fullscreen">
+    <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem;">
+      <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
+      <span style="font-weight: 700; font-size: 0.88rem; flex:1;" id="layoutPageTitle">Montage</span>
+
+      <button class="btn" id="btnScanAnotherOntoPage" style="background: var(--accent); padding: 0.4rem 0.7rem; font-size: 0.75rem;">
+        <i data-lucide="plus-circle" style="width:14px;"></i>
+        <span>Scan ergänzen</span>
+      </button>
+
+      <button class="btn" id="btnSaveLayoutPage" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">
+        <i data-lucide="check"></i> <span>Fertig</span>
+      </button>
+    </header>
+
+    <div class="layout-stage">
+      <div class="canvas-sheet" id="sheetContainer"></div>
+    </div>
+  </div>
+
+  <!-- PDF Export Modal -->
+  <div id="exportModal" class="modal-dialog">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">PDF-Export & Speichern</h3>
+        <button class="btn btn-secondary btn-icon" id="btnCloseExportModal" style="width:30px; height:30px;"><i data-lucide="x"></i></button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+        <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Dateiname der PDF</label>
+        <div style="display: flex; align-items: center; background: #090d16; border: 1px solid var(--surface-border); border-radius: 8px; overflow: hidden; padding-right: 0.75rem;">
+          <input type="text" id="pdfFileName" placeholder="z. B. Dokumentenscan" style="flex: 1; background: transparent; border: none; outline: none; padding: 0.6rem 0.75rem; color: #fff; font-size: 0.85rem;" />
+          <span style="color: var(--text-sub); font-size: 0.8rem; font-weight: 600;">.pdf</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+        <label style="font-size: 0.75rem; color: var(--text-sub); font-weight: 600;">Qualitätsstufe</label>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;">
+          <button class="btn btn-secondary" id="btnCompLow" data-preset="low" style="border:1px solid var(--surface-border); padding: 0.5rem 0.2rem; text-align: center; border-radius:8px;">
+            <div style="font-weight:700;">Kompakt</div>
+            <div style="font-size: 0.6rem; opacity: 0.7;">~200 KB</div>
+          </button>
+          <button class="btn btn-secondary" id="btnCompMed" data-preset="medium" style="border:1px solid var(--surface-border); padding: 0.5rem 0.2rem; text-align: center; border-radius:8px;">
+            <div style="font-weight:700;">Standard</div>
+            <div style="font-size: 0.6rem; opacity: 0.7;">Ausgewogen</div>
+          </button>
+          <button class="btn btn-secondary" id="btnCompHigh" data-preset="high" style="border:1px solid var(--surface-border); padding: 0.5rem 0.2rem; text-align: center; border-radius:8px;">
+            <div style="font-weight:700;">HD Druck</div>
+            <div style="font-size: 0.6rem; opacity: 0.7;">Max. Schärfe</div>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn" id="btnStartExport" style="width: 100%; justify-content: center; padding: 0.65rem;">
+        <i data-lucide="download"></i> Jetzt PDF Herunterladen
+      </button>
+    </div>
+  </div>
+
+  <div id="toastBadge" class="toast-badge">
+    <i data-lucide="check" style="width:15px;"></i>
+    <span id="toastText">Aktion ausgeführt</span>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // Reale Maße in PDF-Punkten (72 DPI)
+    const FORMAT_PRESETS = {
+      a4:      { label: 'DIN A4',      wPt: 595.28, hPt: 841.89, ratio: 841.89 / 595.28 },
+      a5:      { label: 'DIN A5',      wPt: 419.53, hPt: 595.28, ratio: 595.28 / 419.53 },
+      a3:      { label: 'DIN A3',      wPt: 841.89, hPt: 1190.55, ratio: 1190.55 / 841.89 },
+      letter:  { label: 'US Letter',  wPt: 612.00, hPt: 792.00, ratio: 792.00 / 612.00 },
+      card:    { label: 'Ausweis',     wPt: 242.65, hPt: 153.01, ratio: 153.01 / 242.65 },
+      biz:     { label: 'Visitenkarte',wPt: 240.94, hPt: 155.91, ratio: 155.91 / 240.94 },
+      receipt: { label: 'Kassenbon',   wPt: 226.77, hPt: 566.93, ratio: 566.93 / 226.77 },
+      square:  { label: 'Quadratisch', wPt: 566.93, hPt: 566.93, ratio: 1.0 },
+      free:    { label: 'Frei',        wPt: 595.28, hPt: 841.89, ratio: 1.0 }
+    };
+
+    const A4_RENDER_W = 1240;
+    const A4_RENDER_H = 1754;
+
+    // State (100% lokal im Browser-RAM)
+    let pagesData = [];
+    let activePageIndex = null;
+    let targetPageForNewScan = null;
+    let currentRawImage = null;
+    let selectedBlankFormat = 'a4';
+
+    let activeCropFormat = 'a4';
+    let activeVfFormat = 'a4';
+
+    let warpedCanvas = document.createElement('canvas');
+    let warpedOriginalData = null;
+
+    // Standard ist IMMER 'original' (kein ungewollter Filter beim Scan!)
+    let activeFilter = 'original';
+    let filterParams = { bleach: 70, glare: 60, ink: 40, contrast: 15 };
+    let corners = { tl: {x:0, y:0}, tr: {x:1, y:0}, br: {x:1, y:1}, bl: {x:0, y:1} };
+    let exportPreset = 'medium';
+
+    // DOM Elements
+    const cameraModal = document.getElementById('cameraModal');
+    const cameraVideo = document.getElementById('cameraVideo');
+    const btnStartScan = document.getElementById('btnStartScan');
+    const nativeCameraFallbackInput = document.getElementById('nativeCameraFallbackInput');
+    const btnCloseCamera = document.getElementById('btnCloseCamera');
+    const btnToggleTorch = document.getElementById('btnToggleTorch');
+    const torchIcon = document.getElementById('torchIcon');
+    const btnShutter = document.getElementById('btnShutter');
+    const fallbackFileInput = document.getElementById('fallbackFileInput');
+
+    const vfBox = document.getElementById('vfBox');
+    const vfBadge = document.getElementById('vfBadge');
+
+    const scanEditorModal = document.getElementById('scanEditorModal');
+    const cropHeader = document.getElementById('cropHeader');
+    const filterHeader = document.getElementById('filterHeader');
+    const warpView = document.getElementById('warpView');
+    const filterView = document.getElementById('filterView');
+    const cropControlsPanel = document.getElementById('cropControlsPanel');
+    const filterControlsPanel = document.getElementById('filterControlsPanel');
+    const btnProceedToFilter = document.getElementById('btnProceedToFilter');
+    const btnBackToCrop = document.getElementById('btnBackToCrop');
+
+    const canvasCrop = document.getElementById('canvasCrop');
+    const canvasFilterPreview = document.getElementById('canvasFilterPreview');
+    const canvasWarpWrapper = document.getElementById('canvasWarpWrapper');
+    const btnCancelScanEdit = document.getElementById('btnCancelScanEdit');
+    const btnConfirmFullA4 = document.getElementById('btnConfirmFullA4');
+    const btnConfirmToBlank = document.getElementById('btnConfirmToBlank');
+    const btnRotateSource = document.getElementById('btnRotateSource');
+    const btnAutoDetectCorners = document.getElementById('btnAutoDetectCorners');
+
+    const blankFormatModal = document.getElementById('blankFormatModal');
+    const btnOpenNewBlankModal = document.getElementById('btnOpenNewBlankModal');
+    const btnOpenNewBlankModalBottom = document.getElementById('btnOpenNewBlankModalBottom');
+    const btnQuickBlankA4 = document.getElementById('btnQuickBlankA4');
+    const btnCloseBlankModal = document.getElementById('btnCloseBlankModal');
+    const btnCreateBlankSheet = document.getElementById('btnCreateBlankSheet');
+
+    const pickTargetSheetModal = document.getElementById('pickTargetSheetModal');
+    const btnClosePickTargetModal = document.getElementById('btnClosePickTargetModal');
+    const btnTargetNewA4Sheet = document.getElementById('btnTargetNewA4Sheet');
+    const existingSheetsContainer = document.getElementById('existingSheetsContainer');
+    const selectTargetSheet = document.getElementById('selectTargetSheet');
+    const btnConfirmAddToExisting = document.getElementById('btnConfirmAddToExisting');
+
+    const layoutModal = document.getElementById('layoutModal');
+    const sheetContainer = document.getElementById('sheetContainer');
+    const layoutPageTitle = document.getElementById('layoutPageTitle');
+    const btnCloseLayoutModal = document.getElementById('btnCloseLayoutModal');
+    const btnScanAnotherOntoPage = document.getElementById('btnScanAnotherOntoPage');
+    const btnSaveLayoutPage = document.getElementById('btnSaveLayoutPage');
+
+    const pagesGrid = document.getElementById('pagesGrid');
+    const emptyView = document.getElementById('emptyView');
+    const btnOpenExportModal = document.getElementById('btnOpenExportModal');
+
+    const exportModal = document.getElementById('exportModal');
+    const btnCloseExportModal = document.getElementById('btnCloseExportModal');
+    const btnStartExport = document.getElementById('btnStartExport');
+    const pdfFileName = document.getElementById('pdfFileName');
+
+    const toastBadge = document.getElementById('toastBadge');
+    const toastText = document.getElementById('toastText');
+
+    const handles = {
+      tl: document.getElementById('hTL'),
+      tr: document.getElementById('hTR'),
+      br: document.getElementById('hBR'),
+      bl: document.getElementById('hBL')
+    };
+
+    function showToast(msg) {
+      toastText.innerText = msg;
+      toastBadge.classList.add('show');
+      setTimeout(() => toastBadge.classList.remove('show'), 2200);
+    }
+
+    const isLocalFileContext = window.location.protocol === 'file:';
+    if (isLocalFileContext) {
+      document.getElementById('envNotice').style.display = 'flex';
+      lucide.createIcons();
+    }
+
+    new Sortable(pagesGrid, {
+      animation: 200,
+      handle: '.card-handle',
+      onEnd: (evt) => {
+        const item = pagesData.splice(evt.oldIndex, 1)[0];
+        pagesData.splice(evt.newIndex, 0, item);
+        refreshPagesUI();
+      }
+    });
+
+    // ----------------------------------------------------
+    // 1. BLANKO-SEITEN ERSTELLUNG MIT MEHREREN FORMATEN
+    // ----------------------------------------------------
+    btnQuickBlankA4.addEventListener('click', () => {
+      createBlankSheet('a4');
+    });
+
+    function createBlankSheet(fmtKey) {
+      const newPage = {
+        id: 'page_' + Date.now(),
+        formatKey: fmtKey,
+        previewUrl: '',
+        items: []
+      };
+      pagesData.push(newPage);
+      openLayoutEditor(pagesData.length - 1);
+      showToast(`Weiße ${FORMAT_PRESETS[fmtKey].label}-Seite erstellt`);
+    }
+
+    [btnOpenNewBlankModal, btnOpenNewBlankModalBottom].forEach(btn => {
+      btn.addEventListener('click', () => {
+        blankFormatModal.style.display = 'flex';
+      });
+    });
+
+    btnCloseBlankModal.addEventListener('click', () => {
+      blankFormatModal.style.display = 'none';
+    });
+
+    document.querySelectorAll('.format-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.format-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        selectedBlankFormat = card.dataset.fmt;
+      });
+    });
+
+    btnCreateBlankSheet.addEventListener('click', () => {
+      blankFormatModal.style.display = 'none';
+      createBlankSheet(selectedBlankFormat);
+    });
+
+    // ----------------------------------------------------
+    // 2. KAMERA & SUCHERRAHMEN
+    // ----------------------------------------------------
+    let mediaStream = null;
+    let track = null;
+    let torchState = false;
+
+    btnStartScan.addEventListener('click', () => {
+      targetPageForNewScan = null;
+      triggerCameraCapture();
+    });
+
+    function triggerCameraCapture() {
+      if (isLocalFileContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        nativeCameraFallbackInput.click();
+      } else {
+        openCameraStream();
+      }
+    }
+
+    nativeCameraFallbackInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          openScanCropEditor(img, null);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    function updateViewfinderGeometry() {
+      const fmt = FORMAT_PRESETS[activeVfFormat] || FORMAT_PRESETS.a4;
+      let w, h;
+
+      if (activeVfFormat === 'card' || activeVfFormat === 'biz') {
+        w = Math.min(window.innerWidth * 0.82, 340);
+        h = w * (fmt.hPt / fmt.wPt);
+      } else if (activeVfFormat === 'receipt') {
+        w = Math.min(window.innerWidth * 0.58, 220);
+        h = Math.min(window.innerHeight * 0.62, 480);
+      } else if (activeVfFormat === 'square') {
+        w = Math.min(window.innerWidth * 0.75, 320);
+        h = w;
+      } else if (activeVfFormat === 'free') {
+        w = Math.min(window.innerWidth * 0.85, 380);
+        h = Math.min(window.innerHeight * 0.65, 520);
+      } else {
+        w = Math.min(window.innerWidth * 0.78, 340);
+        h = w * fmt.ratio;
+      }
+
+      vfBox.style.width = `${w}px`;
+      vfBox.style.height = `${h}px`;
+      vfBadge.innerText = fmt.label;
+    }
+
+    document.querySelectorAll('#camFormatsBar .format-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#camFormatsBar .format-pill').forEach(b => b.classList.remove('active'));
+        const target = e.currentTarget;
+        target.classList.add('active');
+        activeVfFormat = target.dataset.cfmt;
+        updateViewfinderGeometry();
+      });
+    });
+
+    function openCameraStream() {
+      cameraModal.style.display = 'flex';
+      document.querySelectorAll('#camFormatsBar .format-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.cfmt === activeVfFormat);
+      });
+      updateViewfinderGeometry();
+
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      }).then(stream => {
+        mediaStream = stream;
+        cameraVideo.srcObject = stream;
+        track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.torch) {
+          btnToggleTorch.style.display = 'inline-flex';
+          torchState = false;
+        } else {
+          btnToggleTorch.style.display = 'none';
+        }
+      }).catch(err => {
+        cameraModal.style.display = 'none';
+        nativeCameraFallbackInput.click();
+      });
+    }
+
+    function closeCameraStream() {
+      if (track) {
+        if (torchState) track.applyConstraints({ advanced: [{ torch: false }] });
+        track.stop();
+      }
+      if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+      cameraModal.style.display = 'none';
+    }
+    btnCloseCamera.addEventListener('click', closeCameraStream);
+
+    btnToggleTorch.addEventListener('click', async () => {
+      if (!track) return;
+      try {
+        torchState = !torchState;
+        await track.applyConstraints({ advanced: [{ torch: torchState }] });
+        torchIcon.setAttribute('data-lucide', torchState ? 'zap' : 'zap-off');
+        lucide.createIcons();
+      } catch (e) { console.error(e); }
+    });
+
+    function getVfCropInVideoSpace() {
+      const vRect = cameraVideo.getBoundingClientRect();
+      const vfRect = vfBox.getBoundingClientRect();
+      const videoW = cameraVideo.videoWidth;
+      const videoH = cameraVideo.videoHeight;
+      if (!videoW || !videoH) return null;
+
+      const videoRatio = videoW / videoH;
+      const elemRatio = vRect.width / vRect.height;
+      let renderW, renderH, offsetX, offsetY;
+
+      if (elemRatio > videoRatio) {
+        renderW = vRect.width;
+        renderH = vRect.width / videoRatio;
+        offsetX = 0;
+        offsetY = (vRect.height - renderH) / 2;
+      } else {
+        renderH = vRect.height;
+        renderW = vRect.height * videoRatio;
+        offsetX = (vRect.width - renderW) / 2;
+        offsetY = 0;
+      }
+
+      const leftInRender = vfRect.left - (vRect.left + offsetX);
+      const topInRender = vfRect.top - (vRect.top + offsetY);
+
+      const nx = Math.max(0.01, Math.min(0.95, leftInRender / renderW));
+      const ny = Math.max(0.01, Math.min(0.95, topInRender / renderH));
+      const nw = Math.max(0.05, Math.min(0.99 - nx, vfRect.width / renderW));
+      const nh = Math.max(0.05, Math.min(0.99 - ny, vfRect.height / renderH));
+
+      return {
+        tl: { x: nx, y: ny },
+        tr: { x: nx + nw, y: ny },
+        br: { x: nx + nw, y: ny + nh },
+        bl: { x: nx, y: ny + nh }
+      };
+    }
+
+    btnShutter.addEventListener('click', () => {
+      const projectedCorners = getVfCropInVideoSpace();
+
+      const snapCanvas = document.createElement('canvas');
+      snapCanvas.width = cameraVideo.videoWidth;
+      snapCanvas.height = cameraVideo.videoHeight;
+      const ctx = snapCanvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0);
+
+      const img = new Image();
+      img.onload = () => {
+        closeCameraStream();
+        openScanCropEditor(img, projectedCorners);
+      };
+      img.src = snapCanvas.toDataURL('image/jpeg', 0.95);
+    });
+
+    fallbackFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          closeCameraStream();
+          openScanCropEditor(img, null);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    // ----------------------------------------------------
+    // 3. SCAN-EDITOR: STRIKTE 2 PHASEN (1. ZUSCHNITT -> 2. FILTER)
+    // ----------------------------------------------------
+    function openScanCropEditor(img, initialProjectedCorners) {
+      currentRawImage = img;
+      activeCropFormat = activeVfFormat;
+      syncEditorFormatUI();
+
+      // WICHTIG: Standard ist immer Original!
+      activeFilter = 'original';
+      document.querySelectorAll('.filter-card').forEach(c => {
+        c.classList.toggle('active', c.dataset.filter === 'original');
+      });
+
+      filterParams = { bleach: 70, glare: 60, ink: 40, contrast: 15 };
+
+      scanEditorModal.style.display = 'flex';
+      goToStep('crop'); // Immer in Schritt 1 starten!
+
+      if (initialProjectedCorners) {
+        corners = initialProjectedCorners;
+      } else {
+        applyFormatRatioToCorners(activeCropFormat);
+      }
+
+      drawCropPreview();
+      updateHandlePositions();
+    }
+
+    function goToStep(step) {
+      if (step === 'crop') {
+        cropHeader.style.display = 'flex';
+        filterHeader.style.display = 'none';
+        warpView.style.display = 'flex';
+        filterView.style.display = 'none';
+        cropControlsPanel.style.display = 'flex';
+        filterControlsPanel.style.display = 'none';
+        drawCropPreview();
+        updateHandlePositions();
+      } else if (step === 'filter') {
+        cropHeader.style.display = 'none';
+        filterHeader.style.display = 'flex';
+        warpView.style.display = 'none';
+        filterView.style.display = 'flex';
+        cropControlsPanel.style.display = 'none';
+        filterControlsPanel.style.display = 'flex';
+
+        // Warpt den Zuschnitt und rendert den aktuell ausgewählten Filter (Standard: Original)
+        warpScannedDocument(currentRawImage, corners, activeCropFormat === 'a4');
+        renderPerfectionFilter();
+      }
+    }
+
+    // Von Schritt 1 (Zuschnitt) zu Schritt 2 (Filter)
+    btnProceedToFilter.addEventListener('click', () => {
+      goToStep('filter');
+    });
+
+    // Zurück zu Schritt 1 (Zuschnitt korrigieren)
+    btnBackToCrop.addEventListener('click', () => {
+      goToStep('crop');
+    });
+
+    function syncEditorFormatUI() {
+      document.querySelectorAll('#editorFormatsBar .format-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.efmt === activeCropFormat);
+      });
+    }
+
+    document.querySelectorAll('#editorFormatsBar .format-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#editorFormatsBar .format-pill').forEach(b => b.classList.remove('active'));
+        const target = e.currentTarget;
+        target.classList.add('active');
+        activeCropFormat = target.dataset.efmt;
+        applyFormatRatioToCorners(activeCropFormat);
+        drawCropPreview();
+        updateHandlePositions();
+        showToast(`Format: ${FORMAT_PRESETS[activeCropFormat].label}`);
+      });
+    });
+
+    function applyFormatRatioToCorners(fmtKey) {
+      const imgW = currentRawImage.width;
+      const imgH = currentRawImage.height;
+      const fmt = FORMAT_PRESETS[fmtKey] || FORMAT_PRESETS.a4;
+
+      const cx = (corners.tl.x + corners.tr.x + corners.br.x + corners.bl.x) / 4 || 0.5;
+      const cy = (corners.tl.y + corners.tr.y + corners.br.y + corners.bl.y) / 4 || 0.5;
+
+      if (fmtKey === 'free') {
+        const bw = 0.4, bh = 0.4;
+        corners = {
+          tl: { x: Math.max(0.02, cx - bw), y: Math.max(0.02, cy - bh) },
+          tr: { x: Math.min(0.98, cx + bw), y: Math.max(0.02, cy - bh) },
+          br: { x: Math.min(0.98, cx + bw), y: Math.min(0.98, cy + bh) },
+          bl: { x: Math.max(0.02, cx - bw), y: Math.min(0.98, cy + bh) }
+        };
+        return;
+      }
+
+      const targetRatio = (fmt.hPt / fmt.wPt);
+      let boxW = 0.74;
+      let boxH = (boxW * imgW * targetRatio) / imgH;
+
+      if (boxH > 0.88) {
+        boxH = 0.88;
+        boxW = (boxH * imgH) / (imgW * targetRatio);
+      }
+
+      const halfW = boxW / 2;
+      const halfH = boxH / 2;
+
+      corners = {
+        tl: { x: Math.max(0.02, Math.min(0.98 - boxW, cx - halfW)), y: Math.max(0.02, Math.min(0.98 - boxH, cy - halfH)) },
+        tr: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.max(0.02, Math.min(0.98 - boxH, cy - halfH)) },
+        br: { x: Math.min(0.98, Math.max(0.02 + boxW, cx + halfW)), y: Math.min(0.98, Math.max(0.02 + boxH, cy + halfH)) },
+        bl: { x: Math.max(0.02, Math.min(0.98 - boxW, cx - halfW)), y: Math.min(0.98, Math.max(0.02 + boxH, cy + halfH)) }
+      };
+    }
+
+    btnRotateSource.addEventListener('click', () => {
+      const rotCanvas = document.createElement('canvas');
+      rotCanvas.width = currentRawImage.height;
+      rotCanvas.height = currentRawImage.width;
+      const ctx = rotCanvas.getContext('2d');
+      ctx.translate(rotCanvas.width / 2, rotCanvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(currentRawImage, -currentRawImage.width / 2, -currentRawImage.height / 2);
+
+      const rotatedImg = new Image();
+      rotatedImg.onload = () => {
+        currentRawImage = rotatedImg;
+        applyFormatRatioToCorners(activeCropFormat);
+        drawCropPreview();
+        updateHandlePositions();
+      };
+      rotatedImg.src = rotCanvas.toDataURL('image/jpeg', 0.95);
+    });
+
+    btnAutoDetectCorners.addEventListener('click', () => {
+      applyFormatRatioToCorners(activeCropFormat);
+      drawCropPreview();
+      updateHandlePositions();
+      showToast('Ecken zurückgesetzt');
+    });
+
+    function drawCropPreview() {
+      const maxW = window.innerWidth * 0.92;
+      const maxH = window.innerHeight * 0.55;
+      const scale = Math.min(maxW / currentRawImage.width, maxH / currentRawImage.height, 1);
+
+      canvasCrop.width = currentRawImage.width * scale;
+      canvasCrop.height = currentRawImage.height * scale;
+
+      const ctx = canvasCrop.getContext('2d');
+      ctx.drawImage(currentRawImage, 0, 0, canvasCrop.width, canvasCrop.height);
+
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(corners.tl.x * canvasCrop.width, corners.tl.y * canvasCrop.height);
+      ctx.lineTo(corners.tr.x * canvasCrop.width, corners.tr.y * canvasCrop.height);
+      ctx.lineTo(corners.br.x * canvasCrop.width, corners.br.y * canvasCrop.height);
+      ctx.lineTo(corners.bl.x * canvasCrop.width, corners.bl.y * canvasCrop.height);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(59, 130, 246, 0.18)";
+      ctx.fill();
+    }
+
+    function updateHandlePositions() {
+      const rect = canvasCrop.getBoundingClientRect();
+      const parentRect = canvasWarpWrapper.getBoundingClientRect();
+      const offX = rect.left - parentRect.left;
+      const offY = rect.top - parentRect.top;
+
+      Object.keys(handles).forEach(k => {
+        handles[k].style.left = `${offX + corners[k].x * canvasCrop.width}px`;
+        handles[k].style.top = `${offY + corners[k].y * canvasCrop.height}px`;
+      });
+    }
+
+    function isPointInCropPolygon(px, py) {
+      const pts = [corners.tl, corners.tr, corners.br, corners.bl];
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const xi = pts[i].x, yi = pts[i].y;
+        const xj = pts[j].x, yj = pts[j].y;
+        const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    let isMovingEntireBox = false;
+    let boxMoveStart = { x: 0, y: 0 };
+    let initialCornersState = null;
+
+    canvasCrop.addEventListener('pointerdown', (e) => {
+      const rect = canvasCrop.getBoundingClientRect();
+      const nx = (e.clientX - rect.left) / rect.width;
+      const ny = (e.clientY - rect.top) / rect.height;
+
+      if (isPointInCropPolygon(nx, ny)) {
+        isMovingEntireBox = true;
+        boxMoveStart = { x: nx, y: ny };
+        initialCornersState = JSON.parse(JSON.stringify(corners));
+        canvasCrop.style.cursor = 'grabbing';
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isMovingEntireBox) return;
+
+      const rect = canvasCrop.getBoundingClientRect();
+      const currentNx = (e.clientX - rect.left) / rect.width;
+      const currentNy = (e.clientY - rect.top) / rect.height;
+
+      let dx = currentNx - boxMoveStart.x;
+      let dy = currentNy - boxMoveStart.y;
+
+      const keys = ['tl', 'tr', 'br', 'bl'];
+      const minX = Math.min(...keys.map(k => initialCornersState[k].x));
+      const maxX = Math.max(...keys.map(k => initialCornersState[k].x));
+      const minY = Math.min(...keys.map(k => initialCornersState[k].y));
+      const maxY = Math.max(...keys.map(k => initialCornersState[k].y));
+
+      dx = Math.max(-minX, Math.min(1 - maxX, dx));
+      dy = Math.max(-minY, Math.min(1 - maxY, dy));
+
+      keys.forEach(k => {
+        corners[k].x = initialCornersState[k].x + dx;
+        corners[k].y = initialCornersState[k].y + dy;
+      });
+
+      drawCropPreview();
+      updateHandlePositions();
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (isMovingEntireBox) {
+        isMovingEntireBox = false;
+        canvasCrop.style.cursor = 'default';
+      }
+    });
+
+    Object.keys(handles).forEach(key => {
+      const handle = handles[key];
+      let isDragging = false;
+
+      const onPointerMove = (e) => {
+        if (!isDragging) return;
+        const rect = canvasCrop.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        corners[key].x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        corners[key].y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+
+        drawCropPreview();
+        updateHandlePositions();
+      };
+
+      const onPointerUp = () => {
+        isDragging = false;
+        window.removeEventListener('mousemove', onPointerMove);
+        window.removeEventListener('mouseup', onPointerUp);
+        window.removeEventListener('touchmove', onPointerMove);
+        window.removeEventListener('touchend', onPointerUp);
+      };
+
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault(); e.stopPropagation(); isDragging = true;
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+      });
+      handle.addEventListener('touchstart', (e) => {
+        e.preventDefault(); e.stopPropagation(); isDragging = true;
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchend', onPointerUp);
+      }, { passive: false });
+    });
+
+    // ----------------------------------------------------
+    // 4. PERSPEKTIVISCHER WARP & FILTER PIPELINE
+    // ----------------------------------------------------
+    function getPerspectiveTransform(src, dst) {
+      let a = [], b = [];
+      for (let i = 0; i < 4; i++) {
+        a.push([src[i].x, src[i].y, 1, 0, 0, 0, -src[i].x * dst[i].x, -src[i].y * dst[i].x]);
+        b.push(dst[i].x);
+        a.push([0, 0, 0, src[i].x, src[i].y, 1, -src[i].x * dst[i].y, -src[i].y * dst[i].y]);
+        b.push(dst[i].y);
+      }
+      return solveLinearSystem(a, b);
+    }
+
+    function solveLinearSystem(A, B) {
+      let n = B.length;
+      for (let i = 0; i < n; i++) {
+        let maxRow = i;
+        for (let k = i + 1; k < n; k++) if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [B[i], B[maxRow]] = [B[maxRow], B[i]];
+        for (let k = i + 1; k < n; k++) {
+          let f = A[k][i] / A[i][i];
+          for (let j = i; j < n; j++) A[k][j] -= f * A[i][j];
+          B[k] -= f * B[i];
+        }
+      }
+      let x = new Array(n).fill(0);
+      for (let i = n - 1; i >= 0; i--) {
+        let sum = B[i];
+        for (let j = i + 1; j < n; j++) sum -= A[i][j] * x[j];
+        x[i] = sum / A[i][i];
+      }
+      return [...x, 1];
+    }
+
+    function warpScannedDocument(sourceImg, srcCorners, forceFullA4 = false) {
+      let outWidth, outHeight;
+
+      if (forceFullA4) {
+        outWidth = A4_RENDER_W;
+        outHeight = A4_RENDER_H;
+      } else {
+        const dist = (p1, p2) => Math.hypot((p1.x - p2.x) * sourceImg.width, (p1.y - p2.y) * sourceImg.height);
+        outWidth = Math.round((dist(srcCorners.tl, srcCorners.tr) + dist(srcCorners.bl, srcCorners.br)) / 2);
+        outHeight = Math.round((dist(srcCorners.tl, srcCorners.bl) + dist(srcCorners.tr, srcCorners.br)) / 2);
+      }
+
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = sourceImg.width; srcCanvas.height = sourceImg.height;
+      const sCtx = srcCanvas.getContext('2d');
+      sCtx.drawImage(sourceImg, 0, 0);
+      const srcData = sCtx.getImageData(0, 0, sourceImg.width, sourceImg.height);
+
+      warpedCanvas.width = outWidth; warpedCanvas.height = outHeight;
+      const dCtx = warpedCanvas.getContext('2d');
+      const dstData = dCtx.createImageData(outWidth, outHeight);
+
+      const srcPts = [
+        { x: srcCorners.tl.x * sourceImg.width, y: srcCorners.tl.y * sourceImg.height },
+        { x: srcCorners.tr.x * sourceImg.width, y: srcCorners.tr.y * sourceImg.height },
+        { x: srcCorners.br.x * sourceImg.width, y: srcCorners.br.y * sourceImg.height },
+        { x: srcCorners.bl.x * sourceImg.width, y: srcCorners.bl.y * sourceImg.height }
+      ];
+      const dstPts = [{ x: 0, y: 0 }, { x: outWidth, y: 0 }, { x: outWidth, y: outHeight }, { x: 0, y: outHeight }];
+
+      const H = getPerspectiveTransform(dstPts, srcPts);
+      const dPixels = dstData.data;
+      const sPixels = srcData.data;
+      const sW = srcCanvas.width;
+      const sH = srcCanvas.height;
+
+      let idx = 0;
+      for (let y = 0; y < outHeight; y++) {
+        for (let x = 0; x < outWidth; x++) {
+          const denom = H[6] * x + H[7] * y + H[8];
+          const srcX = Math.floor((H[0] * x + H[1] * y + H[2]) / denom);
+          const srcY = Math.floor((H[3] * x + H[4] * y + H[5]) / denom);
+
+          if (srcX >= 0 && srcX < sW && srcY >= 0 && srcY < sH) {
+            const sIdx = (srcY * sW + srcX) * 4;
+            dPixels[idx] = sPixels[sIdx];
+            dPixels[idx + 1] = sPixels[sIdx + 1];
+            dPixels[idx + 2] = sPixels[sIdx + 2];
+            dPixels[idx + 3] = 255;
+          }
+          idx += 4;
+        }
+      }
+
+      dCtx.putImageData(dstData, 0, 0);
+      warpedOriginalData = dCtx.getImageData(0, 0, outWidth, outHeight);
+    }
+
+    // Filter-Klick: Jetzt wird der Filter aktiv gewählt
+    document.querySelectorAll('.filter-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        activeFilter = card.dataset.filter;
+        renderPerfectionFilter();
+      });
+    });
+
+    const sliderBleach = document.getElementById('sliderBleach');
+    const sliderGlare = document.getElementById('sliderGlare');
+    const sliderInk = document.getElementById('sliderInk');
+    const sliderContrast = document.getElementById('sliderContrast');
+
+    [sliderBleach, sliderGlare, sliderInk, sliderContrast].forEach(sl => {
+      sl.addEventListener('input', () => {
+        filterParams.bleach = parseInt(sliderBleach.value);
+        filterParams.glare = parseInt(sliderGlare.value);
+        filterParams.ink = parseInt(sliderInk.value);
+        filterParams.contrast = parseInt(sliderContrast.value);
+
+        document.getElementById('valBleach').innerText = filterParams.bleach;
+        document.getElementById('valGlare').innerText = filterParams.glare;
+        document.getElementById('valInk').innerText = filterParams.ink;
+        document.getElementById('valContrast').innerText = filterParams.contrast;
+
+        renderPerfectionFilter();
+      });
+    });
+
+    // Filter-Berechnung: Bei 'original' wird das Bild 1:1 durchgereicht!
+    function renderPerfectionFilter() {
+      if (!warpedOriginalData) return;
+
+      const w = warpedCanvas.width;
+      const h = warpedCanvas.height;
+      canvasFilterPreview.width = w; canvasFilterPreview.height = h;
+
+      const ctx = canvasFilterPreview.getContext('2d');
+      const outData = ctx.createImageData(w, h);
+      const src = warpedOriginalData.data;
+      const dst = outData.data;
+      const len = src.length;
+
+      // 100% UNVERÄNDERTES ORIGINAL
+      if (activeFilter === 'original') {
+        for (let i = 0; i < len; i++) dst[i] = src[i];
+        ctx.putImageData(outData, 0, 0);
+        return;
+      }
+
+      // SAUVOLA ADAPTIVE BINARISIERUNG
+      if (activeFilter === 'bw') {
+        const gray = new Uint8Array(w * h);
+        for (let i = 0, j = 0; i < len; i += 4, j++) {
+          gray[j] = (src[i] * 77 + src[i+1] * 150 + src[i+2] * 29) >> 8;
+        }
+
+        const intSum = new Uint32Array((w + 1) * (h + 1));
+        const intSq = new Float64Array((w + 1) * (h + 1));
+
+        for (let y = 0; y < h; y++) {
+          let rowSum = 0;
+          let rowSq = 0;
+          const rowOffset = (y + 1) * (w + 1);
+          const prevRowOffset = y * (w + 1);
+
+          for (let x = 0; x < w; x++) {
+            const val = gray[y * w + x];
+            rowSum += val;
+            rowSq += val * val;
+
+            intSum[rowOffset + (x + 1)] = intSum[prevRowOffset + (x + 1)] + rowSum;
+            intSq[rowOffset + (x + 1)] = intSq[prevRowOffset + (x + 1)] + rowSq;
+          }
+        }
+
+        const winSize = Math.max(16, Math.floor(w / 16));
+        const halfWin = Math.floor(winSize / 2);
+        const k = 0.22 + (filterParams.ink / 100) * 0.25;
+        const R = 128.0;
+
+        for (let y = 0; y < h; y++) {
+          const y1 = Math.max(0, y - halfWin);
+          const y2 = Math.min(h, y + halfWin);
+          for (let x = 0; x < w; x++) {
+            const x1 = Math.max(0, x - halfWin);
+            const x2 = Math.min(w, x + halfWin);
+            const count = (x2 - x1) * (y2 - y1);
+
+            const sum = intSum[y2 * (w + 1) + x2] 
+                      - intSum[y1 * (w + 1) + x2] 
+                      - intSum[y2 * (w + 1) + x1] 
+                      + intSum[y1 * (w + 1) + x1];
+
+            const sqSum = intSq[y2 * (w + 1) + x2] 
+                        - intSq[y1 * (w + 1) + x2] 
+                        - intSq[y2 * (w + 1) + x1] 
+                        + intSq[y1 * (w + 1) + x1];
+
+            const mean = sum / count;
+            const variance = (sqSum - ((sum * sum) / count)) / count;
+            const stdDev = Math.sqrt(Math.max(0, variance));
+
+            const thresh = mean * (1.0 + k * ((stdDev / R) - 1.0));
+            const idx = (y * w + x) * 4;
+            const val = (gray[y * w + x] < thresh) ? 0 : 255;
+
+            dst[idx] = val; dst[idx+1] = val; dst[idx+2] = val; dst[idx+3] = 255;
+          }
+        }
+
+        ctx.putImageData(outData, 0, 0);
+        return;
+      }
+
+      // RETINEX / BLEACH FILTER
+      const bgSmall = document.createElement('canvas');
+      bgSmall.width = 32; bgSmall.height = Math.round(32 * (h / w));
+      const bgCtx = bgSmall.getContext('2d');
+      bgCtx.drawImage(warpedCanvas, 0, 0, bgSmall.width, bgSmall.height);
+
+      const bgFull = document.createElement('canvas');
+      bgFull.width = w; bgFull.height = h;
+      const bgFullCtx = bgFull.getContext('2d');
+      bgFullCtx.imageSmoothingEnabled = true;
+      bgFullCtx.drawImage(bgSmall, 0, 0, w, h);
+      const bgData = bgFullCtx.getImageData(0, 0, w, h).data;
+
+      const bleachRatio = filterParams.bleach / 50;
+      const glareFactor = filterParams.glare / 100;
+      const inkBoost = 1 - (filterParams.ink / 100) * 0.7;
+      const c = filterParams.contrast;
+      const contrastFactor = (259 * (c + 255)) / (255 * (259 - c));
+
+      for (let i = 0; i < len; i += 4) {
+        let r = src[i], g = src[i+1], b = src[i+2];
+        const bgLuma = (bgData[i] * 77 + bgData[i+1] * 150 + bgData[i+2] * 29) >> 8;
+        const origLuma = (r * 77 + g * 150 + b * 29) >> 8;
+
+        if (activeFilter === 'antiglare' || glareFactor > 0.1) {
+          if (bgLuma > 195 && origLuma > 210) {
+            const damp = (origLuma - 195) * glareFactor * 0.45;
+            r = Math.max(0, r - damp);
+            g = Math.max(0, g - damp);
+            b = Math.max(0, b - damp);
+          }
+        }
+
+        const normDiv = Math.max(25, bgLuma);
+        let flatR = (r / normDiv) * 240 * bleachRatio;
+        let flatG = (g / normDiv) * 240 * bleachRatio;
+        let flatB = (b / normDiv) * 240 * bleachRatio;
+        let luma = 0.299 * flatR + 0.587 * flatG + 0.114 * flatB;
+
+        const maxChroma = Math.max(r, g, b) - Math.min(r, g, b);
+
+        if (activeFilter === 'magic' || activeFilter === 'antiglare') {
+          if (luma > 205 && maxChroma < 25) {
+            flatR = flatG = flatB = 255;
+          } else {
+            flatR *= inkBoost; flatG *= inkBoost; flatB *= inkBoost;
+          }
+        } else if (activeFilter === 'ink') {
+          if (maxChroma > 20) {
+            flatR = Math.min(255, flatR * 1.25);
+            flatG = Math.min(255, flatG * 1.25);
+            flatB = Math.min(255, flatB * 1.25);
+          } else if (luma > 185) {
+            flatR = flatG = flatB = 255;
+          }
+        } else if (activeFilter === 'gray') {
+          let grayVal = luma > 210 ? 255 : luma * inkBoost;
+          flatR = flatG = flatB = grayVal;
+        }
+
+        if (c !== 0) {
+          flatR = contrastFactor * (flatR - 128) + 128;
+          flatG = contrastFactor * (flatG - 128) + 128;
+          flatB = contrastFactor * (flatB - 128) + 128;
+        }
+
+        dst[i] = Math.max(0, Math.min(255, flatR));
+        dst[i+1] = Math.max(0, Math.min(255, flatG));
+        dst[i+2] = Math.max(0, Math.min(255, flatB));
+        dst[i+3] = 255;
+      }
+
+      ctx.putImageData(outData, 0, 0);
+    }
+
+    btnCancelScanEdit.addEventListener('click', () => {
+      scanEditorModal.style.display = 'none';
+    });
+
+    // ----------------------------------------------------
+    // 5. SPEICHERN: VOLLSEITE VS. BLANKO
+    // ----------------------------------------------------
+    btnConfirmFullA4.addEventListener('click', () => {
+      const finalUrl = canvasFilterPreview.toDataURL('image/jpeg', 0.90);
+      scanEditorModal.style.display = 'none';
+
+      const newPage = {
+        id: 'page_' + Date.now(),
+        formatKey: 'a4',
+        previewUrl: finalUrl,
+        items: [{
+          id: 'item_' + Date.now(),
+          dataUrl: finalUrl,
+          x: 0, y: 0, w: 100, h: 100,
+          aspect: 1 / Math.SQRT2,
+          locked: true
+        }]
+      };
+
+      pagesData.push(newPage);
+      refreshPagesUI();
+      showToast('Als Vollseite gespeichert!');
+    });
+
+    let pendingScanDataUrl = null;
+    let pendingScanAspect = 1;
+
+    btnConfirmToBlank.addEventListener('click', () => {
+      pendingScanDataUrl = canvasFilterPreview.toDataURL('image/jpeg', 0.90);
+      pendingScanAspect = canvasFilterPreview.width / canvasFilterPreview.height;
+
+      scanEditorModal.style.display = 'none';
+
+      if (targetPageForNewScan !== null) {
+        addItemToPage(targetPageForNewScan, pendingScanDataUrl, pendingScanAspect);
+        openLayoutEditor(targetPageForNewScan);
+        targetPageForNewScan = null;
+        return;
+      }
+
+      if (pagesData.length > 0) {
+        selectTargetSheet.innerHTML = '';
+        pagesData.forEach((p, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          opt.innerText = `Seite ${idx + 1} (${FORMAT_PRESETS[p.formatKey].label})`;
+          selectTargetSheet.appendChild(opt);
+        });
+        existingSheetsContainer.style.display = 'flex';
+      } else {
+        existingSheetsContainer.style.display = 'none';
+      }
+
+      pickTargetSheetModal.style.display = 'flex';
+    });
+
+    btnClosePickTargetModal.addEventListener('click', () => {
+      pickTargetSheetModal.style.display = 'none';
+    });
+
+    btnTargetNewA4Sheet.addEventListener('click', () => {
+      pickTargetSheetModal.style.display = 'none';
+      const newPage = {
+        id: 'page_' + Date.now(),
+        formatKey: 'a4',
+        previewUrl: '',
+        items: []
+      };
+      pagesData.push(newPage);
+      const newIdx = pagesData.length - 1;
+      addItemToPage(newIdx, pendingScanDataUrl, pendingScanAspect);
+      openLayoutEditor(newIdx);
+    });
+
+    btnConfirmAddToExisting.addEventListener('click', () => {
+      pickTargetSheetModal.style.display = 'none';
+      const targetIdx = parseInt(selectTargetSheet.value);
+      addItemToPage(targetIdx, pendingScanDataUrl, pendingScanAspect);
+      openLayoutEditor(targetIdx);
+    });
+
+    function addItemToPage(pageIdx, dataUrl, aspect) {
+      const page = pagesData[pageIdx];
+      const fmt = FORMAT_PRESETS[page.formatKey];
+      const pageRatio = fmt.hPt / fmt.wPt;
+
+      let defaultW = 75;
+      let newY = 10;
+      if (page.items.length > 0) {
+        const last = page.items[page.items.length - 1];
+        newY = Math.min(65, last.y + last.h + 4);
+      }
+
+      page.items.push({
+        id: 'item_' + Date.now(),
+        dataUrl: dataUrl,
+        x: (100 - defaultW) / 2,
+        y: newY,
+        w: defaultW,
+        h: defaultW / (aspect * pageRatio),
+        aspect: aspect,
+        locked: false
+      });
+      showToast('Scan auf Seite platziert!');
+    }
+
+    // ----------------------------------------------------
+    // 6. MONTAGE-EDITOR (Reinweiß & Butterweicher Touch-Drag)
+    // ----------------------------------------------------
+    function openLayoutEditor(pageIndex) {
+      activePageIndex = pageIndex;
+      const page = pagesData[pageIndex];
+      const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
+
+      layoutPageTitle.innerText = `Montage (${fmt.label})`;
+      layoutModal.style.display = 'flex';
+
+      sheetContainer.style.aspectRatio = `${fmt.wPt} / ${fmt.hPt}`;
+      renderSheetItems();
+    }
+
+    btnCloseLayoutModal.addEventListener('click', () => {
+      saveActivePagePreview().then(() => {
+        layoutModal.style.display = 'none';
+        refreshPagesUI();
+      });
+    });
+
+    btnSaveLayoutPage.addEventListener('click', () => {
+      saveActivePagePreview().then(() => {
+        layoutModal.style.display = 'none';
+        refreshPagesUI();
+        showToast('Seite gespeichert');
+      });
+    });
+
+    btnScanAnotherOntoPage.addEventListener('click', () => {
+      targetPageForNewScan = activePageIndex;
+      triggerCameraCapture();
+    });
+
+    let selectedItemId = null;
+
+    function renderSheetItems() {
+      sheetContainer.querySelectorAll('.scan-item').forEach(el => el.remove());
+      const page = pagesData[activePageIndex];
+      if (!page) return;
+
+      page.items.forEach(item => {
+        const itemEl = document.createElement('div');
+        itemEl.className = `scan-item ${item.locked ? 'locked' : ''} ${selectedItemId === item.id ? 'selected' : ''}`;
+        itemEl.id = item.id;
+        itemEl.style.left = `${item.x}%`;
+        itemEl.style.top = `${item.y}%`;
+        itemEl.style.width = `${item.w}%`;
+        itemEl.style.height = `${item.h}%`;
+
+        itemEl.innerHTML = `
+          <img src="${item.dataUrl}" />
+          ${item.locked ? `<div class="lock-badge"><i data-lucide="lock" style="width:12px;height:12px;"></i></div>` : ''}
+          ${selectedItemId === item.id ? `
+            <div class="item-toolbar">
+              <button class="item-btn ${item.locked ? 'active' : ''}" onclick="toggleItemLock('${item.id}', event)" title="Sperren / Entsperren">
+                <i data-lucide="${item.locked ? 'lock' : 'unlock'}" style="width:14px;height:14px;"></i>
+              </button>
+              <button class="item-btn" onclick="duplicateItem('${item.id}', event)" title="Duplizieren">
+                <i data-lucide="copy" style="width:14px;height:14px;"></i>
+              </button>
+              <button class="item-btn" style="color:var(--danger);" onclick="deleteItem('${item.id}', event)" title="Löschen">
+                <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              </button>
+            </div>
+            <div class="resize-handle">
+              <i data-lucide="maximize-2" style="width:14px;height:14px;color:#fff;"></i>
+            </div>
+          ` : ''}
+        `;
+
+        setupItemInteractions(itemEl, item);
+        sheetContainer.appendChild(itemEl);
+      });
+
+      lucide.createIcons();
+    }
+
+    window.toggleItemLock = function(itemId, e) {
+      e.stopPropagation();
+      const page = pagesData[activePageIndex];
+      const item = page.items.find(i => i.id === itemId);
+      if (item) {
+        item.locked = !item.locked;
+        renderSheetItems();
+        showToast(item.locked ? 'Fixiert 🔒' : 'Entsperrt 🔓');
+      }
+    };
+
+    window.duplicateItem = function(itemId, e) {
+      e.stopPropagation();
+      const page = pagesData[activePageIndex];
+      const item = page.items.find(i => i.id === itemId);
+      if (item) {
+        const copy = JSON.parse(JSON.stringify(item));
+        copy.id = 'item_' + Date.now();
+        copy.y = Math.min(80, copy.y + 8);
+        copy.x = Math.min(80, copy.x + 5);
+        copy.locked = false;
+        page.items.push(copy);
+        selectedItemId = copy.id;
+        renderSheetItems();
+      }
+    };
+
+    window.deleteItem = function(itemId, e) {
+      e.stopPropagation();
+      const page = pagesData[activePageIndex];
+      page.items = page.items.filter(i => i.id !== itemId);
+      selectedItemId = null;
+      renderSheetItems();
+    };
+
+    function setupItemInteractions(el, item) {
+      el.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.item-toolbar') || e.target.closest('.resize-handle')) return;
+        
+        selectedItemId = item.id;
+        renderSheetItems();
+
+        if (item.locked) return;
+
+        el.setPointerCapture(e.pointerId);
+
+        const sheetRect = sheetContainer.getBoundingClientRect();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const initialX = item.x;
+        const initialY = item.y;
+
+        const onPointerMove = (ev) => {
+          const dxPercent = ((ev.clientX - startX) / sheetRect.width) * 100;
+          const dyPercent = ((ev.clientY - startY) / sheetRect.height) * 100;
+
+          item.x = Math.max(0, Math.min(100 - item.w, initialX + dxPercent));
+          item.y = Math.max(0, Math.min(100 - item.h, initialY + dyPercent));
+
+          el.style.left = `${item.x}%`;
+          el.style.top = `${item.y}%`;
+        };
+
+        const onPointerUp = (ev) => {
+          el.releasePointerCapture(ev.pointerId);
+          el.removeEventListener('pointermove', onPointerMove);
+          el.removeEventListener('pointerup', onPointerUp);
+        };
+
+        el.addEventListener('pointermove', onPointerMove);
+        el.addEventListener('pointerup', onPointerUp);
+      });
+
+      const handle = el.querySelector('.resize-handle');
+      if (handle && !item.locked) {
+        handle.addEventListener('pointerdown', (e) => {
+          e.stopPropagation();
+          handle.setPointerCapture(e.pointerId);
+
+          const sheetRect = sheetContainer.getBoundingClientRect();
+          const startX = e.clientX;
+          const initialW = item.w;
+          const fmtRatio = FORMAT_PRESETS[pagesData[activePageIndex].formatKey].ratio;
+
+          const onResize = (ev) => {
+            const dwPercent = ((ev.clientX - startX) / sheetRect.width) * 100;
+            const newW = Math.max(15, Math.min(100 - item.x, initialW + dwPercent));
+            const newH = newW / (item.aspect * fmtRatio);
+
+            if (item.y + newH <= 100) {
+              item.w = newW;
+              item.h = newH;
+              el.style.width = `${item.w}%`;
+              el.style.height = `${item.h}%`;
+            }
+          };
+
+          const onResizeUp = (ev) => {
+            handle.releasePointerCapture(ev.pointerId);
+            handle.removeEventListener('pointermove', onResize);
+            handle.removeEventListener('pointerup', onResizeUp);
+            renderSheetItems();
+          };
+
+          handle.addEventListener('pointermove', onResize);
+          handle.addEventListener('pointerup', onResizeUp);
+        });
+      }
+    }
+
+    sheetContainer.addEventListener('pointerdown', (e) => {
+      if (e.target === sheetContainer) {
+        selectedItemId = null;
+        renderSheetItems();
+      }
+    });
+
+    async function saveActivePagePreview() {
+      const page = pagesData[activePageIndex];
+      if (!page) return;
+      const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
+
+      const cvs = document.createElement('canvas');
+      cvs.width = Math.round(fmt.wPt * 2);
+      cvs.height = Math.round(fmt.hPt * 2);
+      const ctx = cvs.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+
+      for (const it of page.items) {
+        const img = new Image();
+        await new Promise(r => { img.onload = r; img.src = it.dataUrl; });
+        const rx = (it.x / 100) * cvs.width;
+        const ry = (it.y / 100) * cvs.height;
+        const rw = (it.w / 100) * cvs.width;
+        const rh = (it.h / 100) * cvs.height;
+        ctx.drawImage(img, rx, ry, rw, rh);
+      }
+
+      page.previewUrl = cvs.toDataURL('image/jpeg', 0.88);
+    }
+
+    // ----------------------------------------------------
+    // 7. SEITENVERWALTUNG
+    // ----------------------------------------------------
+    function refreshPagesUI() {
+      pagesGrid.innerHTML = '';
+      if (pagesData.length === 0) {
+        emptyView.style.display = 'flex';
+        pagesGrid.style.display = 'none';
+        btnOpenExportModal.disabled = true;
+        return;
+      }
+
+      emptyView.style.display = 'none';
+      pagesGrid.style.display = 'grid';
+      btnOpenExportModal.disabled = false;
+
+      pagesData.forEach((p, idx) => {
+        const fmt = FORMAT_PRESETS[p.formatKey || 'a4'];
+        const card = document.createElement('div');
+        card.className = 'page-card';
+        card.innerHTML = `
+          <div class="thumb-wrapper" onclick="openLayoutEditor(${idx})" title="Montage & Bearbeiten">
+            <span class="format-tag">${fmt.label}</span>
+            <img src="${p.previewUrl}" alt="Seite ${idx + 1}" />
+            <div class="edit-hint">
+              <i data-lucide="layout" style="width:15px;"></i> Montage
+            </div>
+          </div>
+          <div class="card-info">
+            <div class="card-nav">
+              <button class="card-nav-btn" onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Nach links">←</button>
+              <button class="card-nav-btn" onclick="movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Nach rechts">→</button>
+            </div>
+            <div class="card-handle">
+              <span>⠿</span> ${idx + 1}
+            </div>
+            <div style="display:flex; gap:0.25rem;">
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="downloadSingleImage(${idx})" title="Bild herunterladen">
+                <i data-lucide="image-down" style="width:13px;height:13px;"></i>
+              </button>
+              <button class="btn btn-secondary btn-icon" style="width:26px;height:26px;" onclick="removePage(${idx})" title="Löschen">
+                <i data-lucide="trash-2" style="width:13px;height:13px;color:var(--danger);"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        pagesGrid.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    window.movePage = function(index, direction) {
+      const target = index + direction;
+      if (target < 0 || target >= pagesData.length) return;
+      const temp = pagesData[index];
+      pagesData[index] = pagesData[target];
+      pagesData[target] = temp;
+      refreshPagesUI();
+    };
+
+    window.removePage = function(index) {
+      pagesData.splice(index, 1);
+      refreshPagesUI();
+    };
+
+    window.downloadSingleImage = function(index) {
+      const a = document.createElement('a');
+      a.href = pagesData[index].previewUrl;
+      a.download = `Scan_Seite_${index + 1}.jpg`;
+      a.click();
+    };
+
+    // ----------------------------------------------------
+    // 8. PDF-EXPORT
+    // ----------------------------------------------------
+    btnOpenExportModal.addEventListener('click', () => {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const defaultName = `Scan_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      pdfFileName.value = defaultName;
+      exportModal.style.display = 'flex';
+
+      setTimeout(() => {
+        pdfFileName.focus();
+        pdfFileName.select();
+      }, 50);
+    });
+
+    btnCloseExportModal.addEventListener('click', () => {
+      exportModal.style.display = 'none';
+    });
+
+    pdfFileName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        btnStartExport.click();
+      }
+    });
+
+    ['btnCompLow', 'btnCompMed', 'btnCompHigh'].forEach(id => {
+      document.getElementById(id).addEventListener('click', (e) => {
+        ['btnCompLow', 'btnCompMed', 'btnCompHigh'].forEach(b => {
+          const el = document.getElementById(b);
+          el.classList.remove('btn'); el.classList.add('btn-secondary');
+        });
+        const btn = e.currentTarget;
+        btn.classList.remove('btn-secondary'); btn.classList.add('btn');
+        exportPreset = btn.dataset.preset;
+      });
+    });
+
+    btnStartExport.addEventListener('click', async () => {
+      exportModal.style.display = 'none';
+      btnOpenExportModal.disabled = true;
+      const origHtml = btnOpenExportModal.innerHTML;
+      btnOpenExportModal.innerHTML = `<i data-lucide="loader-2"></i>`;
+      lucide.createIcons();
+
+      try {
+        const pdfDoc = await PDFLib.PDFDocument.create();
+
+        let maxDim = 1600;
+        let quality = 0.75;
+        if (exportPreset === 'low') { maxDim = 1000; quality = 0.50; }
+        else if (exportPreset === 'high') { maxDim = 2400; quality = 0.92; }
+
+        for (const p of pagesData) {
+          const fmt = FORMAT_PRESETS[p.formatKey || 'a4'];
+          const pW = fmt.wPt;
+          const pH = fmt.hPt;
+
+          const img = new Image();
+          await new Promise(res => { img.onload = res; img.src = p.previewUrl; });
+
+          const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+
+          const compUrl = c.toDataURL('image/jpeg', quality);
+          const imgBytes = await fetch(compUrl).then(r => r.arrayBuffer());
+          const embeddedImage = await pdfDoc.embedJpg(imgBytes);
+
+          const page = pdfDoc.addPage([pW, pH]);
+          page.drawImage(embeddedImage, { x: 0, y: 0, width: pW, height: pH });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+
+        let cleanName = pdfFileName.value.trim().replace(/\.pdf$/i, '').replace(/[/\\?%*:|"<>]/g, '_');
+        if (!cleanName) cleanName = 'Dokumentenscan';
+        a.download = `${cleanName}.pdf`;
+
+        a.click();
+        showToast(`"${cleanName}.pdf" heruntergeladen! 🎉`);
+      } catch (err) {
+        console.error(err);
+        alert('Fehler beim Exportieren der PDF.');
+      } finally {
+        btnOpenExportModal.innerHTML = origHtml;
+        btnOpenExportModal.disabled = false;
+        lucide.createIcons();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (scanEditorModal.style.display === 'flex' && cropHeader.style.display === 'flex') {
+        drawCropPreview();
+        updateHandlePositions();
+      }
+      if (cameraModal.style.display === 'flex') {
+        updateViewfinderGeometry();
+      }
+    });
+  </script>
+</body>
+</html>
