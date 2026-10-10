@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.14">
+<html lang="en" data-app-version="1.4.15">
 <head>
   <script>
     (() => {
@@ -322,6 +322,11 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       white-space: nowrap; pointer-events: auto;
     }
     .scan-item.selected .item-toolbar { display: flex; }
+    #btnEnterPageEdit, #lblPagePreview { display:none; }
+    #layoutModal.page-preview #btnEnterPageEdit, #layoutModal.page-preview #lblPagePreview { display:inline-flex; }
+    #layoutModal.page-preview header > :not(#btnCloseLayoutModal):not(#btnEnterPageEdit):not(#lblPagePreview) { display:none; }
+    #layoutModal.page-preview .scan-item { pointer-events:none; outline:none; box-shadow:none; }
+    #layoutModal.page-preview .item-toolbar, #layoutModal.page-preview .resize-handle, #layoutModal.page-preview .lock-badge { display:none; }
 
     .item-btn {
       background: transparent; border: none; color: #fff; width: 28px; height: 28px;
@@ -394,7 +399,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.14</span>
+  <span class="version-stamp">Version 1.4.15</span>
  </div>
 </section>
 
@@ -406,7 +411,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.14</span>
+        <span class="version-stamp">Version 1.4.15</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -865,6 +870,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <div id="layoutModal" class="modal-fullscreen">
     <header style="background: rgba(18, 24, 38, 0.95); border-bottom: 1px solid var(--surface-border); gap: 0.4rem; padding: 0.65rem 0.85rem; flex-wrap: wrap;">
       <button class="btn btn-secondary btn-icon" id="btnCloseLayoutModal" style="width:34px;height:34px;"><i data-lucide="arrow-left"></i></button>
+      <span id="lblPagePreview" style="flex:1;font-weight:600;">Page preview</span>
+      <button class="btn" id="btnEnterPageEdit">Edit</button>
       
       <button class="btn btn-secondary" id="btnOpenChangeFormatModal" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="file-text" style="width:13px;"></i>
@@ -952,7 +959,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.14';
+    const APP_VERSION = '1.4.15';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1219,7 +1226,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.14', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.15', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -3054,6 +3061,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     // 6. BEARBEITEN-EDITOR
     // ----------------------------------------------------
     const pageZoom={scale:1,x:0,y:0};
+    let pageReadOnly=false;
     let pageGesture=false;
     const zoomPointers=new Map();
     const pageStage=document.querySelector('#layoutModal .layout-stage');
@@ -3113,10 +3121,15 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     document.getElementById('btnZoomReset').onclick=resetPageZoom;
     pageStage.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();setPageZoom(pageZoom.scale*Math.exp(-e.deltaY*.005),e.clientX,e.clientY);}},{passive:false});
 
-    function openLayoutEditor(pageIndex) {
+    function openLayoutEditor(pageIndex,readOnly=false) {
+      pageReadOnly=readOnly;
+      layoutModal.classList.toggle('page-preview',readOnly);
+      document.getElementById('lblPagePreview').textContent='Page '+(pageIndex+1);
+      pageStage.querySelector('.page-zoom-tools span').textContent=readOnly?'Pinch to zoom':'Pinch to zoom · 100% to edit';
       activePageIndex = pageIndex;
       const page = pagesData[pageIndex];
       if(!page.items.some(i=>i.id===selectedItemId))selectedItemId=page.items.length===1?page.items[0].id:null;
+      if(readOnly)selectedItemId=null;
       document.getElementById('btnEditPlacedScan').disabled=!page.items.length;
       const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
 
@@ -3129,6 +3142,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       renderSheetItems();
       safeRenderIcons();
     }
+    window.openPagePreview=pageIndex=>openLayoutEditor(pageIndex,true);
+    document.getElementById('btnEnterPageEdit').addEventListener('click',()=>openLayoutEditor(activePageIndex));
 
     btnOpenChangeFormatModal.addEventListener('click', () => {
       const page = pagesData[activePageIndex];
@@ -3164,6 +3179,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     });
 
     btnCloseLayoutModal.addEventListener('click', () => {
+      if(pageReadOnly){layoutModal.style.display='none';return;}
       saveActivePagePreview().then(() => {
         layoutModal.style.display = 'none';
         refreshPagesUI();
@@ -3322,7 +3338,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       let dragDistance = 0;
 
       el.addEventListener('pointerdown', (e) => {
-        if (pageGesture || pageZoom.scale>1) return;
+        if (pageReadOnly || pageGesture || pageZoom.scale>1) return;
         if (e.target.closest('.item-toolbar') || e.target.closest('.resize-handle')) return;
 
         selectedItemId = item.id;
@@ -3485,14 +3501,14 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         const card = document.createElement('div');
         card.className = 'page-card';
         card.innerHTML = `
-          <div class="thumb-wrapper" style="--page-ratio: ${fmt.wPt} / ${fmt.hPt}" onclick="openLayoutEditor(${idx})" title="Tap to edit">
+          <div class="thumb-wrapper" style="--page-ratio: ${fmt.wPt} / ${fmt.hPt}" onclick="openPagePreview(${idx})" title="Tap to view">
             <span class="format-tag">${fmt.label}</span>
             <img src="${p.previewUrl}" alt="Page ${idx + 1}" />
             <div class="edit-hint">
-              <i data-lucide="edit-3" style="width:15px;"></i> Edit
+              <i data-lucide="image" style="width:15px;"></i> View
             </div>
           </div>
-          <div class="card-info" onclick="openLayoutEditor(${idx})">
+          <div class="card-info" onclick="openPagePreview(${idx})">
             <div class="card-nav" onclick="event.stopPropagation();">
               <button class="card-nav-btn" onclick="movePage(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} title="Move left">←</button>
               <button class="card-nav-btn" onclick="movePage(${idx}, 1)" ${idx === pagesData.length - 1 ? 'disabled' : ''} title="Move right">→</button>
