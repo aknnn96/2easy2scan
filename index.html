@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.13">
+<html lang="en" data-app-version="1.4.14">
 <head>
   <script>
     (() => {
@@ -394,7 +394,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.13</span>
+  <span class="version-stamp">Version 1.4.14</span>
  </div>
 </section>
 
@@ -406,7 +406,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.13</span>
+        <span class="version-stamp">Version 1.4.14</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -881,8 +881,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <option value="card">EC / ID card</option>
         <option value="passport">Passport</option>
         <option value="openpass">Open passport</option>
-        <option value="receipt80">Receipt · 80 mm</option>
-        <option value="receipt58">Receipt · 58 mm</option>
         <option value="fit">Fit on page</option>
         <option value="fill">Fill page · crop edges</option>
         <option value="custom" disabled>Custom size</option>
@@ -954,7 +952,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.13';
+    const APP_VERSION = '1.4.14';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1221,7 +1219,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.13', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.14', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -3004,7 +3002,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       select.hidden=!item;
       document.getElementById('btnScanSmaller').disabled=!item||item.locked;
       document.getElementById('btnScanLarger').disabled=!item||item.locked;
-      if(item)select.value=item.sizePreset||'custom';
+      if(item)select.value=item.sizePreset?.startsWith('receipt')?'auto':item.sizePreset||'custom';
     }
     document.getElementById('scanSizePreset').addEventListener('change',event=>{
       const page=pagesData[activePageIndex],item=page?.items.find(i=>i.id===selectedItemId);
