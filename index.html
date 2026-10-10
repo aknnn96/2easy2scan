@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.12">
+<html lang="en" data-app-version="1.4.13">
 <head>
   <script>
     (() => {
@@ -394,7 +394,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.12</span>
+  <span class="version-stamp">Version 1.4.13</span>
  </div>
 </section>
 
@@ -406,7 +406,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.12</span>
+        <span class="version-stamp">Version 1.4.13</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -954,7 +954,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.12';
+    const APP_VERSION = '1.4.13';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1221,7 +1221,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.12', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.13', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -3304,6 +3304,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       renderSheetItems();
     };
 
+    function resizeScanFromDrag(start,dx,dy,sheetWidth,sheetHeight,aspect,rotation) {
+      const angle=(rotation||0)*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+      const localX=dx*c+dy*s,localY=-dx*s+dy*c;
+      const delta=(localX+localY/aspect)/(1+1/(aspect*aspect));
+      const oldW=start.w*sheetWidth/100,oldH=start.h*sheetHeight/100;
+      const newW=Math.max(sheetWidth/100,oldW+delta),newH=newW/aspect;
+      const dw=newW-oldW,dh=newH-oldH;
+      return {w:newW/sheetWidth*100,h:newH/sheetHeight*100,
+        x:start.x+(dw*c-dh*s-dw)/2/sheetWidth*100,
+        y:start.y+(dw*s+dh*c-dh)/2/sheetHeight*100};
+    }
     // Stabile Pointer-Interaktion ohne Re-Render-Verlust
     function setupItemInteractions(el, item) {
       let isDraggingItem = false;
@@ -3367,7 +3378,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       if (handle && !item.locked) {
         let isResizing = false;
         let rStartX = 0;
-        let initialW = item.w;
+        let rStartY = 0,resizeStart=null;
 
         handle.addEventListener('pointerdown', (e) => {
           if(pageGesture || pageZoom.scale>1)return;
@@ -3375,22 +3386,21 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           handle.setPointerCapture(e.pointerId);
           isResizing = true;
           rStartX = e.clientX;
-          initialW = item.w;
+          rStartY = e.clientY;
+          resizeStart={x:item.x,y:item.y,w:item.w,h:item.h};
           sheetRect = sheetContainer.getBoundingClientRect();
         });
 
         handle.addEventListener('pointermove', (e) => {
           if(pageGesture || pageZoom.scale>1){isResizing=false;return;}
           if (!isResizing || !sheetRect) return;
-          const dwPercent = ((e.clientX - rStartX) / sheetRect.width) * 100;
-          const newW = Math.max(1, initialW + dwPercent);
-          const fmtRatio = FORMAT_PRESETS[pagesData[activePageIndex].formatKey].ratio;
-          const newH = newW / (item.aspect * fmtRatio);
-
+          const resized=resizeScanFromDrag(resizeStart,e.clientX-rStartX,e.clientY-rStartY,
+            sheetRect.width,sheetRect.height,item.aspect,item.rotation);
           {
-            item.w = newW;
+            Object.assign(item,resized);
             item.sizePreset='custom';syncScanSizeControl();
-            item.h = newH;
+            el.style.left = `${item.x}%`;
+            el.style.top = `${item.y}%`;
             el.style.width = `${item.w}%`;
             el.style.height = `${item.h}%`;
           }
