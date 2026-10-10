@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.10">
+<html lang="en" data-app-version="1.4.11">
 <head>
   <script>
     (() => {
@@ -394,7 +394,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.10</span>
+  <span class="version-stamp">Version 1.4.11</span>
  </div>
 </section>
 
@@ -406,7 +406,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.10</span>
+        <span class="version-stamp">Version 1.4.11</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -876,6 +876,16 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <span>Add a scan</span>
       </button>
 
+      <select id="scanSizePreset" aria-label="Scan size" title="Estimated document size; you can resize freely" hidden style="max-width:155px;background:var(--surface-border);color:var(--text-main);padding:6px;border:0;border-radius:8px;font-size:12px;">
+        <option value="auto">Size: Auto estimate</option>
+        <option value="card">EC / ID card</option>
+        <option value="passport">Passport</option>
+        <option value="openpass">Open passport</option>
+        <option value="receipt80">Receipt · 80 mm</option>
+        <option value="receipt58">Receipt · 58 mm</option>
+        <option value="fit">Fit on page</option>
+        <option value="custom" disabled>Custom size</option>
+      </select>
       <button class="btn btn-secondary" id="btnEditPlacedScan" title="Edit selected scan: edges, perspective and filters" style="padding:0.35rem 0.65rem;font-size:0.75rem;">Edit scan</button>
       <button class="btn" id="btnSaveLayoutPage" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="check"></i> <span>Done</span>
@@ -939,7 +949,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.10';
+    const APP_VERSION = '1.4.11';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1206,7 +1216,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.10', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.11', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -2951,6 +2961,44 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       openLayoutEditor(newIdx);
     });
 
+    function estimateScanSize(aspect) {
+      if(!Number.isFinite(aspect)||aspect<=0)return 'fit';
+      const ratio=Math.max(aspect,1/aspect);
+      if(Math.abs(ratio-85.6/53.98)<0.055)return 'card';
+      if(Math.abs(ratio-125/88)<0.04)return aspect<1?'passport':'openpass';
+      if(aspect<0.45)return 'receipt80';
+      return 'fit';
+    }
+    function sizeScanOnPage(item,fmt,preset='auto') {
+      const type=preset==='auto'?estimateScanSize(item.aspect):preset;
+      const pageW=fmt.wPt*25.4/72,pageH=fmt.hPt*25.4/72;
+      let width;
+      if(type==='card')width=item.aspect>=1?85.6:53.98;
+      else if(type==='passport')width=item.aspect>=1?125:88;
+      else if(type==='openpass')width=item.aspect>=1?176:125;
+      else if(type==='receipt80'||type==='receipt58')width=type==='receipt80'?80:58;
+      else width=pageW*.75;
+      let w=width/pageW*100,h=width/item.aspect/pageH*100;
+      // Oversize documents are reduced together to fit, never stretched.
+      const fit=Math.min(1,90/w,90/h);w*=fit;h*=fit;
+      item.w=w;item.h=h;item.sizePreset=type;
+      item.x=Math.max(0,Math.min(100-w,item.x));
+      item.y=Math.max(0,Math.min(100-h,item.y));
+      return type;
+    }
+    function syncScanSizeControl() {
+      const select=document.getElementById('scanSizePreset');
+      const item=pagesData[activePageIndex]?.items.find(i=>i.id===selectedItemId);
+      select.hidden=!item;
+      if(item)select.value=item.sizePreset||'custom';
+    }
+    document.getElementById('scanSizePreset').addEventListener('change',event=>{
+      const page=pagesData[activePageIndex],item=page?.items.find(i=>i.id===selectedItemId);
+      if(!item)return;
+      sizeScanOnPage(item,FORMAT_PRESETS[page.formatKey],event.target.value);
+      item.locked=false;renderSheetItems();saveActivePagePreview();
+      showToast('Estimated size applied. You can resize freely.');
+    });
     function addItemToPage(pageIdx, dataUrl, aspect) {
       const page = pagesData[pageIdx];
       const fmt = FORMAT_PRESETS[page.formatKey];
@@ -2963,7 +3011,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         newY = Math.min(65, last.y + last.h + 4);
       }
 
-      page.items.push({
+      const newItem={
         id: 'item_' + Date.now(),
         dataUrl: dataUrl,
         x: (100 - defaultW) / 2,
@@ -2973,8 +3021,12 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         aspect: aspect,
         rotation: 0,
         locked: false
-      });
-      showToast('Scan placed on the page!');
+      };
+      const size=sizeScanOnPage(newItem,fmt);
+      newItem.x=(100-newItem.w)/2;
+      page.items.push(newItem);
+      selectedItemId=newItem.id;
+      showToast(size==='card'?'Card size estimated · 85.6 × 54 mm. Editable.':size==='fit'?'Scan placed on the page!':'Document size estimated. Use Scan size to adjust.');
     }
 
     // ----------------------------------------------------
@@ -3043,7 +3095,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     function openLayoutEditor(pageIndex) {
       activePageIndex = pageIndex;
       const page = pagesData[pageIndex];
-      selectedItemId=page.items.length===1?page.items[0].id:null;
+      if(!page.items.some(i=>i.id===selectedItemId))selectedItemId=page.items.length===1?page.items[0].id:null;
       document.getElementById('btnEditPlacedScan').disabled=!page.items.length;
       const fmt = FORMAT_PRESETS[page.formatKey || 'a4'];
 
@@ -3081,7 +3133,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         sheetContainer.style.aspectRatio = `${fmt.wPt} / ${fmt.hPt}`;
 
         page.items.forEach(it => {
-          it.h = it.w / (it.aspect * fmt.ratio);
+          if(it.sizePreset&&it.sizePreset!=='custom')sizeScanOnPage(it,fmt,it.sizePreset);
+          else it.h = it.w / (it.aspect * fmt.ratio);
         });
 
         renderSheetItems();
@@ -3112,6 +3165,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let selectedItemId = null;
 
     function renderSheetItems() {
+      syncScanSizeControl();
       sheetContainer.querySelectorAll('.scan-item').forEach(el => el.remove());
       const page = pagesData[activePageIndex];
       if (!page) return;
@@ -3240,6 +3294,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         if (e.target.closest('.item-toolbar') || e.target.closest('.resize-handle')) return;
 
         selectedItemId = item.id;
+        syncScanSizeControl();
         sheetContainer.querySelectorAll('.scan-item').forEach(node => {
           node.classList.toggle('selected', node.id === item.id);
         });
@@ -3311,6 +3366,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
           if (item.y + newH <= 100) {
             item.w = newW;
+            item.sizePreset='custom';syncScanSizeControl();
             item.h = newH;
             el.style.width = `${item.w}%`;
             el.style.height = `${item.h}%`;
