@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.0">
+<html lang="en" data-app-version="1.4.1">
 <head>
   <script>
     (() => {
@@ -180,7 +180,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
 
     /* Kamera */
-    #cameraModal video { width: 100%; height: 100%; object-fit: cover; }
+    #cameraModal video { width: 100%; height: 100%; object-fit: contain; }
     .camera-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 1rem; pointer-events: none; }
     .camera-overlay * { pointer-events: auto; }
     .camera-top-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
@@ -384,7 +384,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.0</span>
+  <span class="version-stamp">Version 1.4.1</span>
  </div>
 </section>
 
@@ -396,7 +396,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Version 1.4.0</span>
+        <span class="version-stamp">Version 1.4.1</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -552,6 +552,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         </button>
       </div>
 
+      <p id="cameraQuality" style="text-align:center;font-size:10px;color:#d9e5f5;background:#09111bcc;border-radius:8px;padding:5px 8px;align-self:center;max-width:90%;">Starting camera…</p>
       <div class="camera-bottom-bar">
         <label class="btn btn-secondary btn-icon" title="Choose from Gallery">
           <i data-lucide="image"></i>
@@ -910,7 +911,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.0';
+    const APP_VERSION = '1.4.1';
     function safeRenderIcons() {
       try { if (window.lucide) lucide.createIcons(); } catch(e){}
     }
@@ -1160,7 +1161,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.0', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.1', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1488,13 +1489,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       vfBox.style.display = activeVfFormat === 'free' ? 'none' : '';
       if (activeVfFormat === 'free') return;
       const fmt = FORMAT_PRESETS[activeVfFormat] || FORMAT_PRESETS.a4;
+      const rect=cameraVideo.getBoundingClientRect();
+      const videoW=cameraVideo.videoWidth||rect.width,videoH=cameraVideo.videoHeight||rect.height;
+      const fit=Math.min(rect.width/videoW,rect.height/videoH);
+      const availableW=videoW*fit*.85,availableH=videoH*fit*.82;
       let w, h;
 
       if (activeVfFormat === 'free') {
         w = Math.min(window.innerWidth * 0.85, 380);
         h = Math.min(window.innerHeight * 0.65, 520);
       } else {
-        w = Math.min(window.innerWidth * 0.78, 340);
+        w = Math.min(availableW, availableH/fmt.ratio, 340);
         h = w * fmt.ratio;
       }
 
@@ -1539,11 +1544,11 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
-            video: {facingMode: {exact: facingMode}}
+            video: {facingMode: {exact: facingMode},width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}
           });
         } catch (error) {
           if (error.name !== 'OverconstrainedError') throw error;
-          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: facingMode}}});
+          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: facingMode},width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}});
         }
         if (requestId !== cameraRequestId) {
           stream.getTracks().forEach(t => t.stop());
@@ -1560,7 +1565,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         let settings = stream.getVideoTracks()[0].getSettings?.() || {};
         if (selected && selected.deviceId !== settings.deviceId) {
           stream.getTracks().forEach(t => t.stop());
-          stream = await navigator.mediaDevices.getUserMedia({audio:false,video:{deviceId:{exact:selected.deviceId}}});
+          stream = await navigator.mediaDevices.getUserMedia({audio:false,video:{deviceId:{exact:selected.deviceId},width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}});
           if (requestId !== cameraRequestId) { stream.getTracks().forEach(t => t.stop()); return; }
           settings = stream.getVideoTracks()[0].getSettings?.() || {};
         }
@@ -1578,17 +1583,26 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         catch { imageCapture = null; }
         let caps = {};
         try { caps = track.getCapabilities ? track.getCapabilities() : {}; } catch {}
-        const advanced = {};
-        // Resolution hints apply after camera selection, so they cannot select another lens.
-        if (caps.focusMode?.includes('continuous')) advanced.focusMode = 'continuous';
-        if (caps.exposureMode?.includes('continuous')) advanced.exposureMode = 'continuous';
+        // Resolution and autofocus are independent: one failing cannot undo the other.
         if (track.applyConstraints) {
-          try { await track.applyConstraints({width: {ideal: 3840}, height: {ideal: 2160}, advanced: [advanced]}); }
-          catch { if (Object.keys(advanced).length) { try { await track.applyConstraints({advanced: [advanced]}); } catch {} } }
+          try { await track.applyConstraints({width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}); } catch {}
+          if (caps.focusMode?.includes('continuous')) {
+            try { await track.applyConstraints({advanced:[{focusMode:'continuous'}]}); } catch {}
+          }
+          if (caps.exposureMode?.includes('continuous')) {
+            try { await track.applyConstraints({advanced:[{exposureMode:'continuous'}]}); } catch {}
+          }
+          if (caps.zoom && caps.zoom.min<=1 && caps.zoom.max>=1) {
+            try { await track.applyConstraints({advanced:[{zoom:1}]}); } catch {}
+          }
         }
         if (requestId !== cameraRequestId) return;
         btnToggleTorch.style.display = caps.torch ? 'inline-flex' : 'none';
         torchState = false;
+        updateViewfinderGeometry();
+        const actual=track.getSettings?.()||{};
+        const label=track.label||selected?.label||(facingMode==='environment'?'Rear camera':'Front camera');
+        document.getElementById('cameraQuality').textContent=label+' · '+(actual.width||cameraVideo.videoWidth)+' × '+(actual.height||cameraVideo.videoHeight)+' · Tap to focus';
         btnShutter.disabled = false;
         btnSwitchCamera.disabled = cameraDevices.length === 1;
       } catch (error) {
@@ -1611,7 +1625,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       if (track && track.applyConstraints) {
         try {
           await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-          showToast('Focused…');
+          showToast('Autofocus enabled. Hold steady while the image settles.');
         } catch(e){}
       }
     });
@@ -1664,7 +1678,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       const elemRatio = vRect.width / vRect.height;
       let renderW, renderH, offsetX, offsetY;
 
-      if (elemRatio > videoRatio) {
+      if (elemRatio < videoRatio) {
         renderW = vRect.width;
         renderH = vRect.width / videoRatio;
         offsetX = 0;
@@ -1693,11 +1707,24 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
 
     btnShutter.addEventListener('click', async () => {
+      if(btnShutter.disabled)return;
+      btnShutter.disabled=true;
       btnShutter.style.opacity = '0.5';
 
       if (imageCapture) {
         try {
-          const blob = await imageCapture.takePhoto();
+          let photoSettings={};
+          try {
+            const caps=await imageCapture.getPhotoCapabilities();
+            if(caps.imageWidth?.max)photoSettings.imageWidth=caps.imageWidth.max;
+            if(caps.imageHeight?.max)photoSettings.imageHeight=caps.imageHeight.max;
+          } catch {}
+          let blob;
+          try { blob=await imageCapture.takePhoto(photoSettings); }
+          catch {
+            try {blob=await imageCapture.takePhoto(photoSettings.imageWidth?{imageWidth:photoSettings.imageWidth}:{});}
+            catch {blob=await imageCapture.takePhoto();}
+          }
           const img = new Image();
           img.onload = () => {
             URL.revokeObjectURL(img.src);
@@ -1720,13 +1747,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       const ctx = snapCanvas.getContext('2d');
       ctx.drawImage(cameraVideo, 0, 0);
 
-      const img = new Image();
-      img.onload = () => {
-        closeCameraStream();
-        btnShutter.style.opacity = '1';
-        openScanCropEditor(img, projectedCorners, true);
-      };
-      img.src = snapCanvas.toDataURL('image/jpeg', 0.96);
+      closeCameraStream();
+      btnShutter.style.opacity = '1';
+      openScanCropEditor(snapCanvas, projectedCorners, true);
     });
 
     fallbackFileInput.addEventListener('change', (e) => {
@@ -1860,8 +1883,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
     function optimizeCapture(img) {
       const canvas=document.createElement('canvas');
-      const scale=Math.min(1,3200/Math.max(img.width,img.height));
-      canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);
+      canvas.width=img.width;canvas.height=img.height;
       const ctx=canvas.getContext('2d',{willReadFrequently:true});
       ctx.drawImage(img,0,0,canvas.width,canvas.height);
       const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
