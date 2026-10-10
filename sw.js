@@ -2,7 +2,7 @@
 const ROOT = new URL('./', self.location.href);
 const APP = new URL('index.html', ROOT).href;
 const PREFIX = 'smartscan-offline-' + encodeURIComponent(ROOT.pathname) + '-';
-const VERSION = '1.4.2';
+const VERSION = '1.4.3';
 const CACHE = PREFIX + VERSION;
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -60,7 +60,7 @@ self.addEventListener('fetch', event => {
 });
 
 const MANIFEST = {
-  id: ROOT.pathname, name: 'SmartScan Pro', short_name: 'SmartScan',
+  id: ROOT.pathname, name: '2simple2scan', short_name: '2simple2scan',
   start_url: ROOT.pathname + '?launch=app', scope: ROOT.pathname, display: 'standalone',
   background_color: '#090d16', theme_color: '#121826',
   icons: [192,512].map(size => ({src: new URL('smartscan-icon-' + size + '.png', ROOT).href, sizes: size + 'x' + size, type: 'image/png', purpose: 'any'}))

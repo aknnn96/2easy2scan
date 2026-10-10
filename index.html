@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.2">
+<html lang="en" data-app-version="1.4.3">
 <head>
   <script>
     (() => {
@@ -11,14 +11,14 @@
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>SmartScan Pro</title>
+  <title>2simple2scan</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20128%20128%22%3E%3Crect%20width%3D%22128%22%20height%3D%22128%22%20rx%3D%2229%22%20fill%3D%22%23087cff%22%2F%3E%3Cpath%20d%3D%22M37%2020H26a6%206%200%200%200-6%206v11m71-17h11a6%206%200%200%201%206%206v11M20%2091v11a6%206%200%200%200%206%206h11m54%200h11a6%206%200%200%200%206-6V91%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%2F%3E%3Cpath%20d%3D%22M40%2032h34l22%2022v46a5%205%200%200%201-5%205H40a5%205%200%200%201-5-5V37a5%205%200%200%201%205-5%22%20fill%3D%22%23fff%22%2F%3E%3Cpath%20d%3D%22M74%2032v17a5%205%200%200%200%205%205h17%22%20fill%3D%22%23b9daff%22%2F%3E%3Cpath%20d%3D%22M47%2066h36M47%2078h36M47%2090h25%22%20stroke%3D%22%23087cff%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E">
 
   <!-- PWA Metatags für native App-Darstellung im Vollbild (ohne Adressleiste) -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="SmartScan Pro" />
+  <meta name="apple-mobile-web-app-title" content="2simple2scan" />
   <meta name="theme-color" content="#121826" />
 
   <!-- Dynamisches Inline-Manifest für Standalone / Fullscreen PWA -->
@@ -380,11 +380,11 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 <section id="welcomeScreen" aria-labelledby="welcomeTitle">
  <div class="welcome-card">
   <div class="welcome-icon"><svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg></div>
-  <h1 id="welcomeTitle">SmartScan Pro</h1>
+  <h1 id="welcomeTitle">2simple2scan</h1>
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.2</span>
+  <span class="version-stamp">Version 1.4.3</span>
  </div>
 </section>
 
@@ -394,9 +394,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <button id="btnAppUpdate" class="update-pill" hidden>Update ready</button>
         <div class="brand">
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
-          <span>SmartScan Pro</span>
+          <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.2</span>
+        <span class="version-stamp">Version 1.4.3</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -424,7 +424,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <i data-lucide="layers"></i>
         <h3>No documents yet</h3>
         <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.35rem; max-width: 320px;">
-          Start by taking photos with the camera, or import photos you have already taken (for better quality).
+          Start by taking photos with the camera, or import photos you have already taken.
         </p>
       </div>
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
@@ -505,7 +505,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       </div>
 
       <div style="font-size: 0.82rem; color: var(--text-sub); line-height: 1.45; display: flex; flex-direction: column; gap: 0.75rem;">
-        <p><strong>How to use SmartScan offline:</strong></p>
+        <p><strong>How to use 2simple2scan offline:</strong></p>
         <ol style="padding-left:1.25rem;display:grid;gap:0.45rem;">
           <li>Open this page online once and wait for “Offline ready” below.</li>
           <li>Install the app or add it to your home screen from the Chrome menu.</li>
@@ -912,7 +912,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.2';
+    const APP_VERSION = '1.4.3';
     function safeRenderIcons() {
       try { if (window.lucide) lucide.createIcons(); } catch(e){}
     }
@@ -1162,7 +1162,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.2', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.3', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
