@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.3">
+<html lang="en" data-app-version="1.4.4">
 <head>
   <script>
     (() => {
@@ -384,7 +384,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.3</span>
+  <span class="version-stamp">Version 1.4.4</span>
  </div>
 </section>
 
@@ -396,7 +396,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.3</span>
+        <span class="version-stamp">Version 1.4.4</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -534,6 +534,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     </div>
 
     <div class="camera-overlay">
+      <div>
       <div class="camera-top-bar">
         <button class="btn btn-secondary btn-icon" id="btnCloseCamera"><i data-lucide="x"></i></button>
 
@@ -552,8 +553,10 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <i data-lucide="zap-off" id="torchIcon"></i>
         </button>
       </div>
-
-
+      <label id="cameraSelectLabel" hidden style="display:flex;gap:6px;align-items:center;justify-content:center;font-size:11px;color:#fff;margin-top:10px;">Camera
+        <select id="cameraSelect" aria-label="Choose and remember your camera" style="max-width:75%;padding:7px;border-radius:8px;background:#172338;color:#fff;border:1px solid #3c4b63;"></select>
+      </label>
+      </div>
       <div class="camera-bottom-bar">
         <label class="btn btn-secondary btn-icon" title="Choose from Gallery">
           <i data-lucide="image"></i>
@@ -912,7 +915,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.3';
+    const APP_VERSION = '1.4.4';
     function safeRenderIcons() {
       try { if (window.lucide) lucide.createIcons(); } catch(e){}
     }
@@ -1162,7 +1165,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.3', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.4', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1523,13 +1526,78 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let cameraDevices = [];
     let currentCameraDeviceId = '';
     let currentFacingMode = 'environment';
-    function mainCameraFor(devices, facing) {
-      const side = facing === 'environment' ? /back|rear|environment|rück|hinten/i : /front|user|facetime|vorder|vorne/i;
-      const auxiliary = /ultra[ -]?wide|telephoto|tele\b|macro|depth|infrared|\bir\b|0[.,]5\s*x|dual|triple/i;
-      const candidates = devices.filter(d => side.test(d.label || '') && !auxiliary.test(d.label || ''));
-      const explicit = candidates.filter(d => /main|primary|standard|haupt|wide.angle|wide camera|1[.,]0\s*x|\b1x\b/i.test(d.label));
-      return explicit.length === 1 ? explicit[0] : candidates.length === 1 ? candidates[0] : null;
+    const cameraProfiles={environment:[],user:[]};
+    const auxiliaryLens=/ultra[ -]?wide|telephoto|tele\b|macro|depth|infrared|\bir\b|0[.,]5\s*x/i;
+    function preferredCamera(facing) {
+      try{return localStorage.getItem('2simple2scan-camera-'+facing)||'';}catch{return '';}
     }
+    function cameraProfile(videoTrack,device,facing) {
+      const settings=videoTrack.getSettings?.()||{};
+      let caps={};try{caps=videoTrack.getCapabilities?.()||{};}catch{}
+      const label=device?.label||videoTrack.label||'';
+      const side=settings.facingMode||(caps.facingMode?.length===1?caps.facingMode[0]:null)||
+        (/front|user|facetime|vorder|vorne/i.test(label)?'user':/back|rear|environment|rück|hinten/i.test(label)?'environment':null);
+      if(side&&side!==facing)return null;
+      if(auxiliaryLens.test(label))return null;
+      const autofocus=(caps.focusMode||[]).some(mode=>mode==='continuous'||mode==='single-shot');
+      const primary=/main|primary|standard|haupt|wide.angle|wide camera|\b1x\b/i.test(label);
+      // Autofocus is evidence for a document camera; it cannot prove lens identity.
+      const score=(autofocus?100:0)+(primary?35:0)+(caps.torch?12:0);
+      return {deviceId:settings.deviceId||device?.deviceId||'',label,autofocus,score};
+    }
+    async function chooseMainCamera(initial,facing,requestId) {
+      const firstTrack=initial.getVideoTracks()[0],settings=firstTrack.getSettings?.()||{};
+      const firstDevice=cameraDevices.find(d=>d.deviceId===settings.deviceId);
+      const first=cameraProfile(firstTrack,firstDevice,facing);
+      let stoppedInitial=false;
+      let profiles=cameraProfiles[facing].filter(p=>cameraDevices.some(d=>d.deviceId===p.deviceId));
+      const preferred=preferredCamera(facing);
+      if(!profiles.length&&cameraDevices.length>1) {
+        if(first?.deviceId)profiles.push(first);
+        initial.getTracks().forEach(t=>t.stop());stoppedInitial=true;
+        for(const device of cameraDevices) {
+          if(device.deviceId===first?.deviceId||auxiliaryLens.test(device.label||''))continue;
+          const opposite=facing==='environment'?/front|user|facetime|vorder|vorne/i:/back|rear|environment|rück|hinten/i;
+          if(opposite.test(device.label||''))continue;
+          let probe;
+          try {
+            probe=await navigator.mediaDevices.getUserMedia({audio:false,video:{deviceId:{exact:device.deviceId},facingMode:{exact:facing}}});
+            if(requestId!==cameraRequestId)return null;
+            const info=cameraProfile(probe.getVideoTracks()[0],device,facing);
+            if(info)profiles.push(info);
+          } catch(error) {if(error.name==='NotAllowedError')throw error;}
+          finally{probe?.getTracks().forEach(t=>t.stop());}
+          if(requestId!==cameraRequestId)return null;
+        }
+        cameraProfiles[facing]=profiles;
+      }
+      profiles.sort((a,b)=>b.score-a.score);
+      const chosen=profiles.find(p=>p.deviceId===preferred)||profiles[0]||first;
+      const selector=document.getElementById('cameraSelect');
+      selector.replaceChildren();
+      for(const [i,p] of profiles.entries()) {
+        const option=document.createElement('option');option.value=p.deviceId;
+        option.textContent=(p.label||((facing==='environment'?'Rear':'Front')+' camera '+(i+1)))+(p.autofocus?' · Autofocus':'');
+        selector.appendChild(option);
+      }
+      document.getElementById('cameraSelectLabel').hidden=profiles.length<2;
+      selector.value=chosen?.deviceId||'';
+      if(requestId!==cameraRequestId){initial.getTracks().forEach(t=>t.stop());return null;}
+      if(!stoppedInitial&&(!chosen?.deviceId||chosen.deviceId===settings.deviceId))return initial;
+      initial.getTracks().forEach(t=>t.stop());
+      const video={width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'},facingMode:{exact:facing}};
+      if(chosen?.deviceId)video.deviceId={exact:chosen.deviceId};
+      const result=await navigator.mediaDevices.getUserMedia({audio:false,video});
+      if(requestId!==cameraRequestId){result.getTracks().forEach(t=>t.stop());return null;}
+      return result;
+    }
+    document.getElementById('cameraSelect').addEventListener('change',async event=>{
+      const id=event.currentTarget.value;
+      if(!id)return;
+      try{localStorage.setItem('2simple2scan-camera-'+currentFacingMode,id);}catch{}
+      await openCameraStream(currentFacingMode);
+    });
+
     async function openCameraStream(facingMode = 'environment') {
       closeCameraStream();
       const requestId = ++cameraRequestId;
@@ -1545,11 +1613,11 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
-            video: {facingMode: {exact: facingMode},width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}
+            video: {facingMode: {exact: facingMode}}
           });
         } catch (error) {
           if (error.name !== 'OverconstrainedError') throw error;
-          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: facingMode},width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}});
+          stream = await navigator.mediaDevices.getUserMedia({audio: false, video: {facingMode: {ideal: facingMode}}});
         }
         if (requestId !== cameraRequestId) {
           stream.getTracks().forEach(t => t.stop());
@@ -1562,14 +1630,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           }
         } catch {}
         if (requestId !== cameraRequestId) { stream.getTracks().forEach(t => t.stop()); return; }
-        const selected = mainCameraFor(cameraDevices, facingMode);
-        let settings = stream.getVideoTracks()[0].getSettings?.() || {};
-        if (selected && selected.deviceId !== settings.deviceId) {
-          stream.getTracks().forEach(t => t.stop());
-          stream = await navigator.mediaDevices.getUserMedia({audio:false,video:{deviceId:{exact:selected.deviceId},width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}});
-          if (requestId !== cameraRequestId) { stream.getTracks().forEach(t => t.stop()); return; }
-          settings = stream.getVideoTracks()[0].getSettings?.() || {};
-        }
+        stream = await chooseMainCamera(stream,facingMode,requestId);
+        if(!stream)return;
+        const settings=stream.getVideoTracks()[0].getSettings?.()||{};
         if (settings.facingMode && settings.facingMode !== facingMode) {
           throw new Error('Requested camera side unavailable');
         }
