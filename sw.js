@@ -2,7 +2,7 @@
 const ROOT = new URL('./', self.location.href);
 const APP = new URL('index.html', ROOT).href;
 const PREFIX = 'smartscan-offline-' + encodeURIComponent(ROOT.pathname) + '-';
-const VERSION = '1.4.15';
+const VERSION = '1.4.16';
 const CACHE = PREFIX + VERSION;
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
