@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.1">
+<html lang="en" data-app-version="1.4.2">
 <head>
   <script>
     (() => {
@@ -384,7 +384,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.1</span>
+  <span class="version-stamp">Version 1.4.2</span>
  </div>
 </section>
 
@@ -396,7 +396,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>SmartScan Pro</span>
         </div>
-        <span class="version-stamp">Version 1.4.1</span>
+        <span class="version-stamp">Version 1.4.2</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -424,7 +424,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <i data-lucide="layers"></i>
         <h3>No documents yet</h3>
         <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.35rem; max-width: 320px;">
-          Tap the camera button below or create a blank page above.
+          Start by taking photos with the camera, or import photos you have already taken (for better quality).
         </p>
       </div>
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
@@ -524,6 +524,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <div id="cameraModal" class="modal-fullscreen">
     <video id="cameraVideo" playsinline autoplay muted></video>
     
+    <div id="cameraFocusRing" hidden style="position:absolute;width:58px;height:58px;border:2px solid #f9d56e;border-radius:14px;transform:translate(-50%,-50%);pointer-events:none;z-index:5;"></div>
     <div class="viewfinder-box" id="vfBox">
       <div class="vf-badge" id="vfBadge">DIN A4</div>
       <div class="vf-corner vf-tl"></div>
@@ -552,7 +553,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         </button>
       </div>
 
-      <p id="cameraQuality" style="text-align:center;font-size:10px;color:#d9e5f5;background:#09111bcc;border-radius:8px;padding:5px 8px;align-self:center;max-width:90%;">Starting camera…</p>
+
       <div class="camera-bottom-bar">
         <label class="btn btn-secondary btn-icon" title="Choose from Gallery">
           <i data-lucide="image"></i>
@@ -911,7 +912,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.1';
+    const APP_VERSION = '1.4.2';
     function safeRenderIcons() {
       try { if (window.lucide) lucide.createIcons(); } catch(e){}
     }
@@ -1161,7 +1162,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.1', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.2', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1587,22 +1588,19 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         if (track.applyConstraints) {
           try { await track.applyConstraints({width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'}}); } catch {}
           if (caps.focusMode?.includes('continuous')) {
-            try { await track.applyConstraints({advanced:[{focusMode:'continuous'}]}); } catch {}
+            try { await track.applyConstraints({width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'},advanced:[{focusMode:'continuous'}]}); } catch {}
           }
           if (caps.exposureMode?.includes('continuous')) {
-            try { await track.applyConstraints({advanced:[{exposureMode:'continuous'}]}); } catch {}
+            try { await track.applyConstraints({width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'},advanced:[{exposureMode:'continuous'}]}); } catch {}
           }
           if (caps.zoom && caps.zoom.min<=1 && caps.zoom.max>=1) {
-            try { await track.applyConstraints({advanced:[{zoom:1}]}); } catch {}
+            try { await track.applyConstraints({width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'},advanced:[{zoom:1}]}); } catch {}
           }
         }
         if (requestId !== cameraRequestId) return;
         btnToggleTorch.style.display = caps.torch ? 'inline-flex' : 'none';
         torchState = false;
         updateViewfinderGeometry();
-        const actual=track.getSettings?.()||{};
-        const label=track.label||selected?.label||(facingMode==='environment'?'Rear camera':'Front camera');
-        document.getElementById('cameraQuality').textContent=label+' · '+(actual.width||cameraVideo.videoWidth)+' × '+(actual.height||cameraVideo.videoHeight)+' · Tap to focus';
         btnShutter.disabled = false;
         btnSwitchCamera.disabled = cameraDevices.length === 1;
       } catch (error) {
@@ -1621,14 +1619,44 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       }
     }
 
-    cameraVideo.addEventListener('click', async () => {
-      if (track && track.applyConstraints) {
-        try {
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-          showToast('Autofocus enabled. Hold steady while the image settles.');
-        } catch(e){}
+    let focusRequestId=0;
+    function pointInCamera(clientX,clientY) {
+      const rect=cameraVideo.getBoundingClientRect(),w=cameraVideo.videoWidth,h=cameraVideo.videoHeight;
+      if(!w||!h)return null;
+      const scale=Math.min(rect.width/w,rect.height/h),rw=w*scale,rh=h*scale;
+      const left=rect.left+(rect.width-rw)/2,top=rect.top+(rect.height-rh)/2;
+      const x=(clientX-left)/rw,y=(clientY-top)/rh;
+      return x<0||x>1||y<0||y>1?null:{x,y};
+    }
+    async function focusCameraAt(event) {
+      if(event.target.closest('button,label,input,.formats-scroll-bar'))return;
+      const point=pointInCamera(event.clientX,event.clientY),activeTrack=track;
+      if(!point||!activeTrack?.applyConstraints)return;
+      const requestId=++focusRequestId;
+      let caps={},supported={};
+      try{caps=activeTrack.getCapabilities?.()||{};supported=navigator.mediaDevices.getSupportedConstraints?.()||{};}catch{}
+      const modes=caps.focusMode||[],mode=modes.includes('single-shot')?'single-shot':modes.includes('continuous')?'continuous':null;
+      if(!mode){showToast('Tap focus is not available for this camera.');return;}
+      const usePoint=supported.pointsOfInterest===true;
+      if(!usePoint&&mode==='continuous'){showToast('This camera supports automatic focus only.');return;}
+      const ring=document.getElementById('cameraFocusRing');
+      const rect=cameraModal.getBoundingClientRect();
+      ring.style.left=(event.clientX-rect.left)+'px';ring.style.top=(event.clientY-rect.top)+'px';ring.hidden=false;
+      try {
+        const controls={focusMode:{exact:mode}};
+        if(usePoint)controls.pointsOfInterest=[point];
+        await activeTrack.applyConstraints({width:{ideal:3840},height:{ideal:2880},resizeMode:{ideal:'none'},...controls});
+        if(activeTrack!==track||requestId!==focusRequestId)return;
+        const actual=activeTrack.getSettings?.()||{};
+        if(actual.focusMode&&actual.focusMode!==mode)throw new Error('Focus mode not applied');
+        showToast(usePoint?'Focus requested here. Hold steady.':'Autofocus requested. Hold steady.');
+      } catch {
+        if(activeTrack===track)showToast('The browser could not apply tap focus. Autofocus remains active.');
+      } finally {
+        setTimeout(()=>{if(requestId===focusRequestId)ring.hidden=true;},900);
       }
-    });
+    }
+    cameraModal.addEventListener('click',focusCameraAt);
 
     function closeCameraStream() {
       ++cameraRequestId;
