@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.8">
+<html lang="en" data-app-version="1.4.9">
 <head>
   <script>
     (() => {
@@ -109,6 +109,16 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem;
       touch-action: pan-y !important;
     }
+    html, body { height: 100%; overflow: hidden; }
+    .app-shell { height: 100dvh; min-height: 0; }
+    main { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+    .pages-grid, .pages-grid * { touch-action: pan-y !important; }
+    .page-card img { -webkit-user-drag: none; user-select: none; }
+    .library-view-tools { display:flex; gap:8px; justify-content:flex-end; }
+    .library-view-tools [aria-pressed="true"] { background:var(--primary); color:#fff; }
+    .pages-grid.compact { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .pages-grid.compact .card-info { padding:6px; flex-wrap:wrap; gap:5px; }
+    .pages-grid.compact .card-handle { font-size:11px; }
     .page-card {
       background: var(--surface); border: 1px solid var(--surface-border);
       border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
@@ -384,7 +394,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.8</span>
+  <span class="version-stamp">Version 1.4.9</span>
  </div>
 </section>
 
@@ -396,7 +406,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.8</span>
+        <span class="version-stamp">Version 1.4.9</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -426,6 +436,10 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.35rem; max-width: 320px;">
           Start by taking photos with the camera, or import photos you have already taken.
         </p>
+      </div>
+      <div class="library-view-tools" role="group" aria-label="Library view">
+        <button class="btn btn-secondary" id="btnLibraryNormal" aria-pressed="true">Standard view</button>
+        <button class="btn btn-secondary" id="btnLibraryCompact" aria-pressed="false">2 per row</button>
       </div>
       <div class="pages-grid" id="pagesGrid" style="display: none;"></div>
     </main>
@@ -925,7 +939,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.8';
+    const APP_VERSION = '1.4.9';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1192,7 +1206,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.8', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.9', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1401,6 +1415,27 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     const btnSaveLayoutPage = document.getElementById('btnSaveLayoutPage');
 
     const pagesGrid = document.getElementById('pagesGrid');
+    function setLibraryView(compact) {
+      pagesGrid.classList.toggle('compact',compact);
+      document.getElementById('btnLibraryNormal').setAttribute('aria-pressed',String(!compact));
+      document.getElementById('btnLibraryCompact').setAttribute('aria-pressed',String(compact));
+      try{localStorage.setItem('2simple2scan-library-view',compact?'compact':'standard');}catch{}
+    }
+    document.getElementById('btnLibraryNormal').addEventListener('click',()=>setLibraryView(false));
+    document.getElementById('btnLibraryCompact').addEventListener('click',()=>setLibraryView(true));
+    try{setLibraryView(localStorage.getItem('2simple2scan-library-view')==='compact');}catch{}
+    // A swipe scrolls the library; it must not also open the tapped page.
+    let libraryTouch=null,librarySwiped=false;
+    pagesGrid.addEventListener('touchstart',event=>{
+      const p=event.touches[0];libraryTouch=p?{x:p.clientX,y:p.clientY}:null;librarySwiped=false;
+    },{passive:true});
+    pagesGrid.addEventListener('touchmove',event=>{
+      const p=event.touches[0];
+      if(p&&libraryTouch&&Math.hypot(p.clientX-libraryTouch.x,p.clientY-libraryTouch.y)>8)librarySwiped=true;
+    },{passive:true});
+    pagesGrid.addEventListener('click',event=>{
+      if(librarySwiped){event.preventDefault();event.stopImmediatePropagation();librarySwiped=false;}
+    },true);
     const emptyView = document.getElementById('emptyView');
     const btnOpenExportModal = document.getElementById('btnOpenExportModal');
 
