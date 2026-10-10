@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.4">
+<html lang="en" data-app-version="1.4.5">
 <head>
   <script>
     (() => {
@@ -384,7 +384,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.4</span>
+  <span class="version-stamp">Version 1.4.5</span>
  </div>
 </section>
 
@@ -396,7 +396,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.4</span>
+        <span class="version-stamp">Version 1.4.5</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -915,7 +915,20 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.4';
+    const APP_VERSION = '1.4.5';
+    // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
+    const actionTimes = new Map();
+    let exportBusy = false;
+    function allowAction(key, interval, notify = true) {
+      const now = performance.now();
+      const previous = actionTimes.get(key);
+      if (previous !== undefined && now - previous < interval) {
+        if (notify) showToast('Please wait a moment before trying again.');
+        return false;
+      }
+      actionTimes.set(key, now);
+      return true;
+    }
     function safeRenderIcons() {
       try { if (window.lucide) lucide.createIcons(); } catch(e){}
     }
@@ -1165,7 +1178,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.4', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.5', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1184,6 +1197,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     async function checkForAppUpdate(force=false) {
       if(!navigator.onLine||!('serviceWorker' in navigator))return;
       if(!force&&Date.now()-lastUpdateCheck<6*60*60*1000)return;
+      if(!allowAction('update',60000,false))return;
       lastUpdateCheck=Date.now();
       try {
         const reg=await navigator.serviceWorker.getRegistration(appScope);
@@ -1471,7 +1485,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         showToast('Live camera unavailable. Open the HTTPS website or use Gallery.');
         return;
       }
-      openCameraStream();
+      if(allowAction('camera',1000))openCameraStream();
     }
 
     bottomGalleryInput.addEventListener('change', (e) => {
@@ -1695,6 +1709,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       if(event.target.closest('button,label,input,.formats-scroll-bar'))return;
       const point=pointInCamera(event.clientX,event.clientY),activeTrack=track;
       if(!point||!activeTrack?.applyConstraints)return;
+      if(!allowAction('focus',500,false))return;
       const requestId=++focusRequestId;
       let caps={},supported={};
       try{caps=activeTrack.getCapabilities?.()||{};supported=navigator.mediaDevices.getSupportedConstraints?.()||{};}catch{}
@@ -1739,6 +1754,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     btnSwitchCamera.addEventListener('click', async () => {
       if (btnSwitchCamera.disabled || !mediaStream) return;
+      if(!allowAction('camera',1000))return;
       const previousDeviceId = currentCameraDeviceId;
       const nextFacing = currentFacingMode === 'environment' ? 'user' : 'environment';
       // Ask for the default camera on that side, never cycle through individual lenses.
@@ -1799,6 +1815,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     btnShutter.addEventListener('click', async () => {
       if(btnShutter.disabled)return;
+      if(!allowAction('capture',1000))return;
       btnShutter.disabled=true;
       btnShutter.style.opacity = '0.5';
 
@@ -3370,6 +3387,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
 
     btnStartExport.addEventListener('click', async () => {
+      if(exportBusy||!pagesData.length||!allowAction('pdf',3000))return;
+      exportBusy=true;
       exportModal.style.display = 'none';
       btnOpenExportModal.disabled = true;
       const origHtml = btnOpenExportModal.innerHTML;
@@ -3455,8 +3474,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         console.error("PDF export error:", err);
         alert('Could not export PDF: ' + err.message);
       } finally {
+        exportBusy=false;
         btnOpenExportModal.innerHTML = origHtml;
-        btnOpenExportModal.disabled = false;
+        btnOpenExportModal.disabled = !pagesData.length;
         safeRenderIcons();
       }
     });
