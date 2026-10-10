@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.16">
+<html lang="en" data-app-version="1.4.17">
 <head>
   <script>
     (() => {
@@ -328,7 +328,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     .scan-item.selected .item-toolbar { display: flex; }
     #btnEnterPageEdit, #lblPagePreview { display:none; }
     #layoutModal.page-preview #btnEnterPageEdit, #layoutModal.page-preview #lblPagePreview { display:inline-flex; }
-    #layoutModal.page-preview header > :not(#btnCloseLayoutModal):not(#btnEnterPageEdit):not(#lblPagePreview) { display:none; }
+    #layoutModal.page-preview header > :not(#btnCloseLayoutModal):not(#btnEnterPageEdit):not(#lblPagePreview) { display:none !important; }
     #layoutModal.page-preview .scan-item { pointer-events:none; outline:none; box-shadow:none; }
     #layoutModal.page-preview .item-toolbar, #layoutModal.page-preview .resize-handle, #layoutModal.page-preview .lock-badge { display:none; }
 
@@ -403,7 +403,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.16</span>
+  <span class="version-stamp">Version 1.4.17</span>
  </div>
 </section>
 
@@ -415,7 +415,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.16</span>
+        <span class="version-stamp">Version 1.4.17</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -963,7 +963,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.16';
+    const APP_VERSION = '1.4.17';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1039,7 +1039,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           const tx=db.transaction(STORE_NAME,'readwrite');
           tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
           const store=tx.objectStore(STORE_NAME);store.clear();
-          for(const page of pagesData)store.put(page);
+          for(const [order,page] of pagesData.entries())store.put({...page,order});
         });
         db.close();return true;
       } catch(error) { console.warn('Could not save pages:',error);return false; }
@@ -1054,7 +1054,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         await new Promise((resolve,reject)=>{
           req.onsuccess = () => {
             if (req.result && req.result.length > 0) {
-              pagesData = req.result;
+              pagesData = req.result.sort((a,b)=>(a.order??Infinity)-(b.order??Infinity));
               refreshPagesUI();
             }
           };
@@ -1230,7 +1230,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.16', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.17', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1279,6 +1279,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     document.getElementById('btnAppUpdate').addEventListener('click',async event=>{
       const button=event.currentTarget;if(button.disabled)return;button.disabled=true;
       await initialPagesLoad;
+      if(layoutModal.style.display==='flex'&&!pageReadOnly)await saveActivePagePreview();
       if(await savePagesToStorage())location.reload();
       else {button.disabled=false;showToast('Could not save your pages. Update postponed.');}
     });
@@ -1574,14 +1575,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     bottomGalleryInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      targetPageForNewScan=null;
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
           openScanCropEditor(img, null);
         };
+        img.onerror=()=>showToast('Could not read this image. Choose another file.');
         img.src = event.target.result;
       };
+      reader.onerror=()=>showToast('Could not read this file. Please try again.');
       reader.readAsDataURL(file);
       e.target.value = '';
     });
@@ -1816,7 +1820,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       btnToggleTorch.style.display = 'none';
       btnSwitchCamera.disabled = true;
     }
-    btnCloseCamera.addEventListener('click', closeCameraStream);
+    btnCloseCamera.addEventListener('click',()=>{closeCameraStream();targetPageForNewScan=null;});
 
 
     btnSwitchCamera.addEventListener('click', async () => {
@@ -1884,6 +1888,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       if(btnShutter.disabled)return;
       if(!allowAction('capture',1000))return;
       btnShutter.disabled=true;
+      const captureRequest=cameraRequestId;
       btnShutter.style.opacity = '0.5';
 
       if (imageCapture) {
@@ -1903,10 +1908,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           const img = new Image();
           img.onload = () => {
             URL.revokeObjectURL(img.src);
+            if(captureRequest!==cameraRequestId)return;
             const projectedCorners = getVfCropInVideoSpace(img.width, img.height);
             closeCameraStream();
             btnShutter.style.opacity = '1';
             openScanCropEditor(img, projectedCorners, true);
+          };
+          img.onerror=()=>{
+            URL.revokeObjectURL(img.src);
+            if(captureRequest!==cameraRequestId)return;
+            btnShutter.disabled=false;btnShutter.style.opacity='1';
+            showToast('Could not read the photo. Please try again.');
           };
           img.src = URL.createObjectURL(blob);
           return;
@@ -1915,6 +1927,11 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         }
       }
 
+      if(captureRequest!==cameraRequestId)return;
+      if(!cameraVideo.videoWidth||!cameraVideo.videoHeight){
+        btnShutter.disabled=false;btnShutter.style.opacity='1';
+        showToast('The camera is not ready yet. Please try again.');return;
+      }
       const projectedCorners = getVfCropInVideoSpace(cameraVideo.videoWidth, cameraVideo.videoHeight);
       const snapCanvas = document.createElement('canvas');
       snapCanvas.width = cameraVideo.videoWidth;
@@ -1937,8 +1954,10 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           closeCameraStream();
           openScanCropEditor(img, null);
         };
+        img.onerror=()=>showToast('Could not read this image. Choose another file.');
         img.src = event.target.result;
       };
+      reader.onerror=()=>showToast('Could not read this file. Please try again.');
       reader.readAsDataURL(file);
       e.target.value = '';
     });
@@ -2829,6 +2848,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     btnCancelScanEdit.addEventListener('click', () => {
       editingScan=null;scanEditRequest++;
+      targetPageForNewScan=null;
       if(filterFrame!==null){cancelAnimationFrame(filterFrame);filterFrame=null;}
       scanEditorModal.style.display = 'none';
     });
@@ -3186,14 +3206,16 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     btnCloseLayoutModal.addEventListener('click', () => {
       if(pageReadOnly){layoutModal.style.display='none';return;}
-      saveActivePagePreview().then(() => {
+      saveActivePagePreview().then(saved => {
+        if(!saved){showToast('Could not save this page. Please try again.');return;}
         layoutModal.style.display = 'none';
         refreshPagesUI();
       });
     });
 
     btnSaveLayoutPage.addEventListener('click', () => {
-      saveActivePagePreview().then(() => {
+      saveActivePagePreview().then(saved => {
+        if(!saved){showToast('Could not save this page. Please try again.');return;}
         layoutModal.style.display = 'none';
         refreshPagesUI();
         showToast('Page saved');
@@ -3440,6 +3462,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     sheetContainer.addEventListener('pointerdown', (e) => {
       if (e.target === sheetContainer) {
         selectedItemId = null;
+        syncScanSizeControl();
         sheetContainer.querySelectorAll('.scan-item').forEach(node => node.classList.remove('selected'));
       }
     });
@@ -3481,7 +3504,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       }
 
       page.previewUrl = cvs.toDataURL('image/jpeg', 0.90);
-      savePagesToStorage();
+      return await savePagesToStorage();
     }
 
     // ----------------------------------------------------
