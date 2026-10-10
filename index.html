@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.11">
+<html lang="en" data-app-version="1.4.12">
 <head>
   <script>
     (() => {
@@ -303,7 +303,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     .canvas-sheet {
       background: #ffffff !important; position: relative;
       max-width: 460px; max-height: calc(100vh - 140px); width: 100%;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 4px; overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.85); border-radius: 0; overflow: hidden;
       touch-action: none; user-select: none;
     }
 
@@ -313,7 +313,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
     .scan-item:active { cursor: grabbing; }
     .scan-item.selected { outline: 2px dashed var(--primary); box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
-    .scan-item img { width: 100%; height: 100%; object-fit: fill; pointer-events: none; border: 1px solid rgba(0,0,0,0.08); }
+    .scan-item img { width: 100%; height: 100%; object-fit: fill; pointer-events: none; border: 0; }
 
     .item-toolbar {
       position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
@@ -394,7 +394,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.11</span>
+  <span class="version-stamp">Version 1.4.12</span>
  </div>
 </section>
 
@@ -406,7 +406,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.11</span>
+        <span class="version-stamp">Version 1.4.12</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -884,8 +884,13 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         <option value="receipt80">Receipt · 80 mm</option>
         <option value="receipt58">Receipt · 58 mm</option>
         <option value="fit">Fit on page</option>
+        <option value="fill">Fill page · crop edges</option>
         <option value="custom" disabled>Custom size</option>
       </select>
+      <div style="display:flex;gap:4px;" aria-label="Scan scale">
+        <button class="btn btn-secondary" id="btnScanSmaller" aria-label="Make selected scan smaller" title="Scale scan down">−</button>
+        <button class="btn btn-secondary" id="btnScanLarger" aria-label="Make selected scan larger" title="Scale scan up">+</button>
+      </div>
       <button class="btn btn-secondary" id="btnEditPlacedScan" title="Edit selected scan: edges, perspective and filters" style="padding:0.35rem 0.65rem;font-size:0.75rem;">Edit scan</button>
       <button class="btn" id="btnSaveLayoutPage" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
         <i data-lucide="check"></i> <span>Done</span>
@@ -949,7 +954,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.11';
+    const APP_VERSION = '1.4.12';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1216,7 +1221,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.11', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.12', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -2971,6 +2976,13 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
     function sizeScanOnPage(item,fmt,preset='auto') {
       const type=preset==='auto'?estimateScanSize(item.aspect):preset;
+      if(type==='fill'){
+        const quarterTurn=(Math.abs(item.rotation||0)%180)===90;
+        item.w=quarterTurn?Math.max(100*item.aspect,100*fmt.ratio):Math.max(100,100*item.aspect*fmt.ratio);
+        item.h=item.w/(item.aspect*fmt.ratio);
+        item.x=(100-item.w)/2;item.y=(100-item.h)/2;item.sizePreset='fill';
+        return type;
+      }
       const pageW=fmt.wPt*25.4/72,pageH=fmt.hPt*25.4/72;
       let width;
       if(type==='card')width=item.aspect>=1?85.6:53.98;
@@ -2990,6 +3002,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       const select=document.getElementById('scanSizePreset');
       const item=pagesData[activePageIndex]?.items.find(i=>i.id===selectedItemId);
       select.hidden=!item;
+      document.getElementById('btnScanSmaller').disabled=!item||item.locked;
+      document.getElementById('btnScanLarger').disabled=!item||item.locked;
       if(item)select.value=item.sizePreset||'custom';
     }
     document.getElementById('scanSizePreset').addEventListener('change',event=>{
@@ -2997,8 +3011,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       if(!item)return;
       sizeScanOnPage(item,FORMAT_PRESETS[page.formatKey],event.target.value);
       item.locked=false;renderSheetItems();saveActivePagePreview();
-      showToast('Estimated size applied. You can resize freely.');
+      showToast(item.sizePreset==='fill'?'Page filled. Overflow is cropped.':'Estimated size applied. You can resize freely.');
     });
+    function scaleSelectedScan(factor){
+      const page=pagesData[activePageIndex],item=page?.items.find(i=>i.id===selectedItemId);
+      if(!item||item.locked)return;
+      const w=Math.max(1,item.w*factor),h=item.h*w/item.w;
+      item.x-=(w-item.w)/2;item.y-=(h-item.h)/2;
+      item.w=w;item.h=h;item.sizePreset='custom';renderSheetItems();
+    }
+    document.getElementById('btnScanSmaller').addEventListener('click',()=>scaleSelectedScan(1/1.1));
+    document.getElementById('btnScanLarger').addEventListener('click',()=>scaleSelectedScan(1.1));
     function addItemToPage(pageIdx, dataUrl, aspect) {
       const page = pagesData[pageIdx];
       const fmt = FORMAT_PRESETS[page.formatKey];
@@ -3323,8 +3346,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           const dxPercent = (dx / sheetRect.width) * 100;
           const dyPercent = (dy / sheetRect.height) * 100;
 
-          item.x = Math.max(0, Math.min(100 - item.w, initialX + dxPercent));
-          item.y = Math.max(0, Math.min(100 - item.h, initialY + dyPercent));
+          item.x = initialX + dxPercent;
+          item.y = initialY + dyPercent;
 
           el.style.left = `${item.x}%`;
           el.style.top = `${item.y}%`;
@@ -3360,11 +3383,11 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           if(pageGesture || pageZoom.scale>1){isResizing=false;return;}
           if (!isResizing || !sheetRect) return;
           const dwPercent = ((e.clientX - rStartX) / sheetRect.width) * 100;
-          const newW = Math.max(15, Math.min(100 - item.x, initialW + dwPercent));
+          const newW = Math.max(1, initialW + dwPercent);
           const fmtRatio = FORMAT_PRESETS[pagesData[activePageIndex].formatKey].ratio;
           const newH = newW / (item.aspect * fmtRatio);
 
-          if (item.y + newH <= 100) {
+          {
             item.w = newW;
             item.sizePreset='custom';syncScanSizeControl();
             item.h = newH;
