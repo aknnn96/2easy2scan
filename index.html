@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.5">
+<html lang="en" data-app-version="1.4.6">
 <head>
   <script>
     (() => {
@@ -384,7 +384,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.5</span>
+  <span class="version-stamp">Version 1.4.6</span>
  </div>
 </section>
 
@@ -396,7 +396,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.5</span>
+        <span class="version-stamp">Version 1.4.6</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -641,6 +641,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     <!-- Panel Schritt 2: Filter (5 synchrone Schieberegler inkl. Brightness!) -->
     <div class="controls-panel" id="filterControlsPanel" style="display: none;">
+      <fieldset style="border:1px solid var(--surface-border);border-radius:12px;padding:10px;display:grid;gap:8px;">
+        <legend style="font-size:0.8rem;">Perspective correction</legend>
+        <label style="font-size:0.75rem;">Horizontal <output id="perspectiveXValue">0</output>
+          <input id="perspectiveX" aria-label="Horizontal perspective" type="range" min="-40" max="40" value="0" style="width:100%;">
+        </label>
+        <label style="font-size:0.75rem;">Vertical <output id="perspectiveYValue">0</output>
+          <input id="perspectiveY" aria-label="Vertical perspective" type="range" min="-40" max="40" value="0" style="width:100%;">
+        </label>
+        <button class="btn btn-secondary" id="btnResetPerspective" type="button">Reset perspective</button>
+        <p style="font-size:0.7rem;color:var(--text-sub);">Edges straighten the scan automatically. Use these controls for fine adjustments; the image edges may be cropped.</p>
+      </fieldset>
       <div class="filter-grid">
         <div class="filter-card active" data-filter="original">
           <div>📷 Original</div>
@@ -915,7 +926,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.5';
+    const APP_VERSION = '1.4.6';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1178,7 +1189,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.5', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.6', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1296,6 +1307,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let activePageIndex = null;
     let targetPageForNewScan = null;
     let currentRawImage = null;
+    let editingScan = null;
+    let scanEditRequest = 0;
+    const perspective = {x:0,y:0};
     let selectedBlankFormat = 'a4';
     let selectedPlacementFormat = 'a4';
 
@@ -2000,10 +2014,13 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       return canvas;
     }
 
-    function openScanCropEditor(img, initialProjectedCorners, fromCamera = false) {
+    function openScanCropEditor(img, initialProjectedCorners, fromCamera = false, existing = null) {
+      editingScan = existing;
+      perspective.x=perspective.y=0;
+      syncPerspectiveControls();
       if (fromCamera) img = optimizeCapture(img);
       currentRawImage = img;
-      activeCropFormat = activeVfFormat;
+      activeCropFormat = existing ? 'free' : activeVfFormat;
       syncEditorFormatUI();
 
       // Reset auf Original & Slider synchronisieren
@@ -2671,6 +2688,42 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     let filterSourceCache = null;
     let filterFrame = null;
+    function syncPerspectiveControls() {
+      for(const axis of ['x','y']) {
+        document.getElementById('perspective'+axis.toUpperCase()).value=perspective[axis];
+        document.getElementById('perspective'+axis.toUpperCase()+'Value').textContent=perspective[axis];
+      }
+    }
+    for(const axis of ['x','y'])document.getElementById('perspective'+axis.toUpperCase()).addEventListener('input',event=>{
+      perspective[axis]=Number(event.target.value)||0;
+      syncPerspectiveControls();filterSourceCache=null;queueFilterRender();
+    });
+    document.getElementById('btnResetPerspective').addEventListener('click',()=>{
+      perspective.x=perspective.y=0;syncPerspectiveControls();filterSourceCache=null;queueFilterRender();
+    });
+    function adjustPerspective(source) {
+      if(!perspective.x&&!perspective.y)return source;
+      const w=source.width,h=source.height;
+      const x=perspective.x/100,y=perspective.y/100;
+      const pts=[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+      if(y>0){pts[0].x+=Math.abs(y)*w/2;pts[1].x-=Math.abs(y)*w/2;}
+      if(y<0){pts[3].x+=Math.abs(y)*w/2;pts[2].x-=Math.abs(y)*w/2;}
+      if(x>0){pts[0].y+=Math.abs(x)*h/2;pts[3].y-=Math.abs(x)*h/2;}
+      if(x<0){pts[1].y+=Math.abs(x)*h/2;pts[2].y-=Math.abs(x)*h/2;}
+      const H=getPerspectiveTransform([{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}],pts);
+      const src=source.getContext('2d').getImageData(0,0,w,h).data;
+      const out=document.createElement('canvas');out.width=w;out.height=h;
+      const ctx=out.getContext('2d'),pixels=ctx.createImageData(w,h);
+      for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
+        const d=H[6]*xx+H[7]*yy+H[8];
+        const sx=Math.max(0,Math.min(w-1,(H[0]*xx+H[1]*yy+H[2])/d));
+        const sy=Math.max(0,Math.min(h-1,(H[3]*xx+H[4]*yy+H[5])/d));
+        const x0=Math.floor(sx),y0=Math.floor(sy),x1=Math.min(w-1,x0+1),y1=Math.min(h-1,y0+1),fx=sx-x0,fy=sy-y0,i=(yy*w+xx)*4;
+        for(let c=0;c<3;c++)pixels.data[i+c]=(src[(y0*w+x0)*4+c]*(1-fx)+src[(y0*w+x1)*4+c]*fx)*(1-fy)+(src[(y1*w+x0)*4+c]*(1-fx)+src[(y1*w+x1)*4+c]*fx)*fy;
+        pixels.data[i+3]=255;
+      }
+      ctx.putImageData(pixels,0,0);return out;
+    }
     function queueFilterRender() {
       if (filterFrame !== null) return;
       filterFrame = requestAnimationFrame(() => { filterFrame=null;renderPerfectionFilter(); });
@@ -2687,6 +2740,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           const working=workingCanvas.getContext('2d');working.imageSmoothingQuality='high';
           working.drawImage(croppedImageCanvas,0,0,w,h);
         }
+        workingCanvas=adjustPerspective(workingCanvas);
         const source=workingCanvas.getContext('2d').getImageData(0,0,w,h).data;
         filterSourceCache={w,h,source,paper:null};
       }
@@ -2700,6 +2754,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
 
     btnCancelScanEdit.addEventListener('click', () => {
+      editingScan=null;scanEditRequest++;
+      if(filterFrame!==null){cancelAnimationFrame(filterFrame);filterFrame=null;}
       scanEditorModal.style.display = 'none';
     });
 
@@ -2709,11 +2765,23 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let pendingScanDataUrl = null;
     let pendingScanAspect = 1;
 
-    btnOpenSaveChoiceModal.addEventListener('click', () => {
+    btnOpenSaveChoiceModal.addEventListener('click', async () => {
       if (filterFrame !== null) { cancelAnimationFrame(filterFrame); filterFrame=null; }
       renderPerfectionFilter(true);
       pendingScanDataUrl = canvasFilterPreview.toDataURL('image/jpeg', 0.92);
       pendingScanAspect = canvasFilterPreview.width / canvasFilterPreview.height;
+
+      if(editingScan){
+        const page=pagesData.find(p=>p.id===editingScan.pageId);
+        const item=page?.items.find(i=>i.id===editingScan.itemId);
+        if(!item){showToast('This scan is no longer available.');return;}
+        item.dataUrl=pendingScanDataUrl;item.aspect=pendingScanAspect;
+        // Preserve the existing page placement, rotation and lock state.
+        activePageIndex=pagesData.indexOf(page);
+        await saveActivePagePreview();refreshPagesUI();
+        editingScan=null;scanEditorModal.style.display='none';
+        openLayoutEditor(activePageIndex);showToast('Scan updated');return;
+      }
 
       if (targetPageForNewScan !== null) {
         addItemToPage(targetPageForNewScan, pendingScanDataUrl, pendingScanAspect);
@@ -3013,6 +3081,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <img src="${item.dataUrl}" />
           ${item.locked ? `<div class="lock-badge"><i data-lucide="lock" style="width:12px;height:12px;"></i></div>` : ''}
           <div class="item-toolbar">
+            <button class="item-btn" onclick="editItemScan('${item.id}', event)" title="Edit scan: edges, perspective and filters" aria-label="Edit scan">
+              <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
+            </button>
             <button class="item-btn" onclick="rotateItemOnSheet('${item.id}', event)" title="Rotate 90°">
               <i data-lucide="rotate-cw" style="width:14px;height:14px;"></i>
             </button>
@@ -3037,6 +3108,20 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
       safeRenderIcons();
     }
+
+    window.editItemScan = function(itemId,e) {
+      e.stopPropagation();
+      const page=pagesData[activePageIndex],item=page?.items.find(i=>i.id===itemId);
+      if(!item)return;
+      const request=++scanEditRequest,img=new Image();
+      img.onload=()=>{
+        if(request!==scanEditRequest||!page.items.includes(item))return;
+        targetPageForNewScan=null;
+        openScanCropEditor(img,fullImageCorners(),false,{pageId:page.id,itemId:item.id});
+      };
+      img.onerror=()=>{if(request===scanEditRequest)showToast('Could not open this scan.');};
+      img.src=item.dataUrl;
+    };
 
     window.rotateItemOnSheet = function(itemId, e) {
       e.stopPropagation();
