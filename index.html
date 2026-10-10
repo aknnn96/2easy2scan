@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.9">
+<html lang="en" data-app-version="1.4.10">
 <head>
   <script>
     (() => {
@@ -394,7 +394,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.9</span>
+  <span class="version-stamp">Version 1.4.10</span>
  </div>
 </section>
 
@@ -406,7 +406,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.9</span>
+        <span class="version-stamp">Version 1.4.10</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -437,7 +437,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           Start by taking photos with the camera, or import photos you have already taken.
         </p>
       </div>
-      <div class="library-view-tools" role="group" aria-label="Library view">
+      <div class="library-view-tools" role="group" aria-label="Library view" style="display:none;">
         <button class="btn btn-secondary" id="btnLibraryNormal" aria-pressed="true">Standard view</button>
         <button class="btn btn-secondary" id="btnLibraryCompact" aria-pressed="false">2 per row</button>
       </div>
@@ -939,7 +939,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.9';
+    const APP_VERSION = '1.4.10';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1206,7 +1206,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.9', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.10', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -3380,6 +3380,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     // ----------------------------------------------------
     function refreshPagesUI() {
       pagesGrid.innerHTML = '';
+      document.querySelector('.library-view-tools').style.display=pagesData?.length?'flex':'none';
       if (!pagesData || pagesData.length === 0) {
         emptyView.style.display = 'flex';
         pagesGrid.style.display = 'none';
