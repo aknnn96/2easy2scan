@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-app-version="1.4.18">
+<html lang="en" data-app-version="1.4.19">
 <head>
   <script>
     (() => {
@@ -274,7 +274,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
     .controls-panel > * { flex-shrink:0; }
     #cropControlsPanel fieldset { min-width:0; }
-    #canvasWarpWrapper.perspective-preview .corner-handle { display:none; }
 
     .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; }
     .filter-card {
@@ -403,7 +402,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   <p>Scan, edit and export documents on your device.</p>
   <button class="btn" id="btnUseWeb">Use Web-Version</button>
   <button class="btn btn-secondary" id="btnWelcomeInstall">Install (to run offline)</button>
-  <span class="version-stamp">Version 1.4.18</span>
+  <span class="version-stamp">Version 1.4.19</span>
  </div>
 </section>
 
@@ -415,7 +414,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <svg class="app-mark" viewBox="0 0 128 128" aria-hidden="true"><use href="#appMark"/></svg>
           <span>2simple2scan</span>
         </div>
-        <span class="version-stamp">Version 1.4.18</span>
+        <span class="version-stamp">Version 1.4.19</span>
       </div>
       <div style="display: flex; gap: 0.4rem; align-items: center;">
         <button class="btn btn-secondary btn-icon" id="btnOpenClearStorageModal" title="Manage storage and cache">
@@ -665,7 +664,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           <input id="perspectiveY" aria-label="Vertical perspective" type="range" min="-40" max="40" value="0" style="width:100%;">
         </label>
         <button class="btn btn-secondary" id="btnResetPerspective" type="button">Reset perspective</button>
-        <button class="btn btn-secondary" id="btnAdjustEdges" type="button" hidden>Adjust edges</button>
         <p style="font-size:0.7rem;color:var(--text-sub);">Edges straighten the scan automatically. Use these controls for fine adjustments; the image edges may be cropped.</p>
       </fieldset>
       <span style="font-size: 0.7rem; color: #64748b; text-align: center;">Drag inside the frame to move it, or drag its corners.</span>
@@ -963,7 +961,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
   </div>
 
   <script>
-    const APP_VERSION = '1.4.18';
+    const APP_VERSION = '1.4.19';
     // Local cooldowns prevent repeated work, not hostile HTTP traffic to the host.
     const actionTimes = new Map();
     let exportBusy = false;
@@ -1230,7 +1228,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         link.rel = 'manifest';
         document.head.appendChild(link);
       }
-      link.href = new URL('smartscan.webmanifest?v=1.4.18', appScope).href;
+      link.href = new URL('smartscan.webmanifest?v=1.4.19', appScope).href;
     }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', enableInstallManifest);
@@ -1359,7 +1357,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let editingScan = null;
     let scanEditRequest = 0;
     const perspective = {x:0,y:0};
-    let showPerspectivePreview=false;
+    let perspectiveEditCache=null;
     let selectedBlankFormat = 'a4';
     let selectedPlacementFormat = 'a4';
 
@@ -2090,7 +2088,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     function openScanCropEditor(img, initialProjectedCorners, fromCamera = false, existing = null) {
       editingScan = existing;
       perspective.x=perspective.y=0;
-      showPerspectivePreview=false;
       syncPerspectiveControls();
       if (fromCamera) img = optimizeCapture(img);
       currentRawImage = img;
@@ -2133,7 +2130,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         filterControlsPanel.style.display = 'flex';
 
         // Intelligente Begradigung ohne Verziehen
-        processSmartCrop(currentRawImage, corners);
+        processSmartCrop(getPerspectiveEditSource(true), corners);
         renderPerfectionFilter();
       }
     }
@@ -2197,6 +2194,8 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     // 90° Drehung im Zuschnitt
     btnRotateSource.addEventListener('click', async () => {
+      currentRawImage=getPerspectiveEditSource(true);
+      perspective.x=perspective.y=0;syncPerspectiveControls();
       const rotCanvas = document.createElement('canvas');
       rotCanvas.width = currentRawImage.height;
       rotCanvas.height = currentRawImage.width;
@@ -2226,7 +2225,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     });
 
     btnAutoDetectCorners.addEventListener('click', () => {
-      const detected = detectPaperCorners(currentRawImage);
+      const detected = detectPaperCorners(getPerspectiveEditSource());
       if (detected) corners = detected;
       drawCropPreview();
       updateHandlePositions();
@@ -2235,18 +2234,17 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
 
     function drawCropPreview() {
       if(!currentRawImage)return;
-      document.getElementById('canvasWarpWrapper').classList.toggle('perspective-preview',showPerspectivePreview);
-      if(showPerspectivePreview){renderCropPerspectivePreview();return;}
+      const displayImage=getPerspectiveEditSource();
       const stage=scanEditorModal.querySelector('.editor-stage');
       const maxW = Math.max(1,stage.clientWidth-48);
       const maxH = Math.max(1,stage.clientHeight-48);
-      const scale = Math.min(maxW / currentRawImage.width, maxH / currentRawImage.height, 1);
+      const scale = Math.min(maxW / displayImage.width, maxH / displayImage.height, 1);
 
-      canvasCrop.width = currentRawImage.width * scale;
-      canvasCrop.height = currentRawImage.height * scale;
+      canvasCrop.width = displayImage.width * scale;
+      canvasCrop.height = displayImage.height * scale;
 
       const ctx = canvasCrop.getContext('2d');
-      ctx.drawImage(currentRawImage, 0, 0, canvasCrop.width, canvasCrop.height);
+      ctx.drawImage(displayImage, 0, 0, canvasCrop.width, canvasCrop.height);
 
       ctx.strokeStyle = "#3b82f6";
       ctx.lineWidth = 2.5;
@@ -2263,7 +2261,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     }
 
     function updateHandlePositions() {
-      if(cropHeader.style.display==='flex'&&showPerspectivePreview)queueFilterRender();
       const rect = canvasCrop.getBoundingClientRect();
       const parentRect = canvasWarpWrapper.getBoundingClientRect();
       const offX = rect.left - parentRect.left;
@@ -2279,6 +2276,7 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     function updateLoupe(normX, normY, clientX) {
       if (!currentRawImage) return;
 
+      const displayImage=getPerspectiveEditSource();
       cropLoupe.style.display = 'block';
 
       const winW = window.innerWidth;
@@ -2293,13 +2291,13 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
         cropLoupe.style.right = '20px';
       }
 
-      const srcX = normX * currentRawImage.width;
-      const srcY = normY * currentRawImage.height;
+      const srcX = normX * displayImage.width;
+      const srcY = normY * displayImage.height;
       const zoomSize = 90; // Größerer Ausschnitt = 1.45x Zoom (scharfe Kanten ohne Pixelraster!)
 
       loupeCtx.clearRect(0, 0, 130, 130);
       loupeCtx.drawImage(
-        currentRawImage,
+        displayImage,
         srcX - zoomSize / 2,
         srcY - zoomSize / 2,
         zoomSize,
@@ -2333,7 +2331,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let initialCornersState = null;
 
     canvasCrop.addEventListener('pointerdown', (e) => {
-      if(showPerspectivePreview)return;
       const rect = canvasCrop.getBoundingClientRect();
       const nx = (e.clientX - rect.left) / rect.width;
       const ny = (e.clientY - rect.top) / rect.height;
@@ -2769,25 +2766,52 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
     let filterSourceCache = null;
     let filterFrame = null;
     function syncPerspectiveControls() {
-      const edgeButton=document.getElementById('btnAdjustEdges');
-      edgeButton.hidden=!perspective.x&&!perspective.y;
-      edgeButton.textContent=showPerspectivePreview?'Adjust edges':'Preview correction';
       for(const axis of ['x','y']) {
         document.getElementById('perspective'+axis.toUpperCase()).value=perspective[axis];
         document.getElementById('perspective'+axis.toUpperCase()+'Value').textContent=perspective[axis];
       }
     }
     for(const axis of ['x','y'])document.getElementById('perspective'+axis.toUpperCase()).addEventListener('input',event=>{
+      const before={...perspective};
       perspective[axis]=Number(event.target.value)||0;
-      showPerspectivePreview=!!(perspective.x||perspective.y);
+      remapPerspectiveCorners(before,perspective);
       syncPerspectiveControls();filterSourceCache=null;queueFilterRender();
     });
     document.getElementById('btnResetPerspective').addEventListener('click',()=>{
-      perspective.x=perspective.y=0;showPerspectivePreview=false;syncPerspectiveControls();filterSourceCache=null;queueFilterRender();
+      const before={...perspective};perspective.x=perspective.y=0;
+      remapPerspectiveCorners(before,perspective);syncPerspectiveControls();filterSourceCache=null;queueFilterRender();
     });
-    document.getElementById('btnAdjustEdges').addEventListener('click',()=>{
-      showPerspectivePreview=!showPerspectivePreview;syncPerspectiveControls();drawCropPreview();updateHandlePositions();
-    });
+    function perspectiveQuad(values) {
+      const x=values.x/100,y=values.y/100;
+      const p=[{x:0,y:0},{x:1,y:0},{x:1,y:1},{x:0,y:1}];
+      if(y>0){p[0].x+=Math.abs(y)/2;p[1].x-=Math.abs(y)/2;}
+      if(y<0){p[3].x+=Math.abs(y)/2;p[2].x-=Math.abs(y)/2;}
+      if(x>0){p[0].y+=Math.abs(x)/2;p[3].y-=Math.abs(x)/2;}
+      if(x<0){p[1].y+=Math.abs(x)/2;p[2].y-=Math.abs(x)/2;}
+      return p;
+    }
+    function remapPerspectiveCorners(before,after) {
+      const rect=perspectiveQuad({x:0,y:0});
+      const toOriginal=getPerspectiveTransform(rect,perspectiveQuad(before));
+      const toDisplay=getPerspectiveTransform(perspectiveQuad(after),rect);
+      const map=(p,H)=>{const d=H[6]*p.x+H[7]*p.y+H[8];return{x:(H[0]*p.x+H[1]*p.y+H[2])/d,y:(H[3]*p.x+H[4]*p.y+H[5])/d};};
+      for(const key of Object.keys(corners)){
+        const p=map(map(corners[key],toOriginal),toDisplay);
+        corners[key]={x:Math.max(0,Math.min(1,p.x)),y:Math.max(0,Math.min(1,p.y))};
+      }
+    }
+    function getPerspectiveEditSource(fullResolution=false) {
+      if(!perspective.x&&!perspective.y)return currentRawImage;
+      const limit=fullResolution?Infinity:1000;
+      const key=[perspective.x,perspective.y,limit].join(':');
+      if(perspectiveEditCache?.image===currentRawImage&&perspectiveEditCache.key===key)return perspectiveEditCache.canvas;
+      const scale=Math.min(1,limit/Math.max(currentRawImage.width,currentRawImage.height));
+      const source=document.createElement('canvas');
+      source.width=Math.max(2,Math.round(currentRawImage.width*scale));source.height=Math.max(2,Math.round(currentRawImage.height*scale));
+      source.getContext('2d').drawImage(currentRawImage,0,0,source.width,source.height);
+      const canvas=adjustPerspective(source);
+      perspectiveEditCache={image:currentRawImage,key,canvas};return canvas;
+    }
     function adjustPerspective(source) {
       if(!perspective.x&&!perspective.y)return source;
       const w=source.width,h=source.height;
@@ -2815,26 +2839,9 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
       if (filterFrame !== null) return;
       filterFrame = requestAnimationFrame(() => {
         filterFrame=null;
-        if(cropHeader.style.display==='flex'){drawCropPreview();if(!showPerspectivePreview)updateHandlePositions();}
+        if(cropHeader.style.display==='flex'){drawCropPreview();updateHandlePositions();}
         else renderPerfectionFilter();
       });
-    }
-    function renderCropPerspectivePreview(){
-      if(!currentRawImage)return;
-      document.getElementById('canvasWarpWrapper').classList.add('perspective-preview');
-      hideLoupe();
-      const scale=Math.min(1,1000/Math.max(currentRawImage.width,currentRawImage.height));
-      const source=document.createElement('canvas');
-      source.width=Math.max(2,Math.round(currentRawImage.width*scale));source.height=Math.max(2,Math.round(currentRawImage.height*scale));
-      source.getContext('2d').drawImage(currentRawImage,0,0,source.width,source.height);
-      processSmartCrop(source,corners);
-      const corrected=adjustPerspective(croppedImageCanvas);
-      const stage=scanEditorModal.querySelector('.editor-stage');
-      const fit=Math.min(1,Math.max(1,stage.clientWidth-48)/corrected.width,Math.max(1,stage.clientHeight-48)/corrected.height);
-      canvasCrop.width=Math.max(1,Math.round(corrected.width*fit));
-      canvasCrop.height=Math.max(1,Math.round(corrected.height*fit));
-      const ctx=canvasCrop.getContext('2d');ctx.imageSmoothingQuality='high';
-      ctx.drawImage(corrected,0,0,canvasCrop.width,canvasCrop.height);
     }
     function renderPerfectionFilter(fullResolution = false) {
       const sourceWidth=croppedImageCanvas.width,sourceHeight=croppedImageCanvas.height;
@@ -2848,7 +2855,6 @@ window.lucide={createIcons(){const icons={"scan-line":[["path",{"d":"M3 7V5a2 2 
           const working=workingCanvas.getContext('2d');working.imageSmoothingQuality='high';
           working.drawImage(croppedImageCanvas,0,0,w,h);
         }
-        workingCanvas=adjustPerspective(workingCanvas);
         const source=workingCanvas.getContext('2d').getImageData(0,0,w,h).data;
         filterSourceCache={w,h,source,paper:null};
       }
